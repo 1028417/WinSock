@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="WinSock\WinSockClient.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\WinSockServer.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\WinSock.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\IOCP.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\util.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\PerIOData.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\AcceptSockMgr.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\AcceptSockNode.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="WinSock\WinSockClient.cpp">
+      <Filter>WinSock</Filter>
+    </ClCompile>
+    <ClCompile Include="WinSock\WinSockServer.cpp">
+      <Filter>WinSock</Filter>
+    </ClCompile>
+    <ClCompile Include="WinSock\WinSock.cpp">
+      <Filter>WinSock</Filter>
+    </ClCompile>
+    <ClCompile Include="WinSock\IOCP.cpp">
+      <Filter>WinSock</Filter>
+    </ClCompile>
+    <ClCompile Include="WinSock\AcceptSockMgr.cpp">
+      <Filter>WinSock</Filter>
+    </ClCompile>
+    <ClCompile Include="WinSock\AcceptSockNode.cpp">
+      <Filter>WinSock</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="WinSock">
+      <UniqueIdentifier>{5d2f0ab3-1455-4fb4-919d-e4e1d48ba442}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
