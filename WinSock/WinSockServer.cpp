@@ -32,7 +32,7 @@ namespace NS_WinSock
 			return false;
 		}
 
-		auto fnRecv = [](CAcceptSockMgr& AcceptSockMgr, CWinSock& WinSock) {
+		auto fnOnAccepted = [](CAcceptSockMgr& AcceptSockMgr, CWinSock& WinSock) {
 			//GetAcceptExSockaddrs(
 			//if (!WinSock.setOpt(SO_UPDATE_ACCEPT_CONTEXT, &m_sock, sizeof SOCKET))
 			//{
@@ -71,7 +71,7 @@ namespace NS_WinSock
 			return true;
 		};
 
-		m_AcceptSockMgr.init(fnRecv, fnShuntdown);
+		m_AcceptSockMgr.init(fnOnAccepted, fnShuntdown);
 
 		return true;
 	}

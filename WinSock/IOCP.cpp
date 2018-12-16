@@ -107,7 +107,7 @@ namespace NS_WinSock
 
 		m_uNumQuery = uNumQuery;
 		do {
-			m_vecThread.push_back((HANDLE)CUtil::beginWin32Thread(_iocpThread, this));
+			m_vecThread.push_back((HANDLE)::_beginthread(_iocpThread, 0, this));
 		} while (0 < uThreadCount && 0 < --uThreadCount);
 
 		return true;

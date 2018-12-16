@@ -23,24 +23,7 @@ using namespace std;
 
 namespace NS_WinSock
 {
-	class CUtil
-	{
-	public:
-		static void* beginWin32Thread(void(*fnCB)(void* pPara), void* pPara = NULL)
-		{
-			return (void*)::_beginthread(fnCB, 0, pPara);
-		}
-
-		static bool queueUserWorkItem(LPTHREAD_START_ROUTINE Function, PVOID Context = NULL)
-		{
-			if (!QueueUserWorkItem(Function, Context, WT_EXECUTEDEFAULT))
-			{
-				return false;
-			}
-
-			return true;
-		}
-	};
+	//QueueUserWorkItem(Function, Context, WT_EXECUTEDEFAULT))
 
 	class CConsole
 	{
@@ -110,34 +93,30 @@ namespace NS_WinSock
 		}
 	};
 
-	struct tagClock
+	struct tagTImer
 	{
-		tagClock()
+		string strOperateName;
+
+		clock_t time = 0;
+
+		tagTImer(const string& t_strOperateName)
+			: strOperateName(t_strOperateName)
 		{
+			CConsole::inst().printEx([&](ostream& out) {
+				out << strOperateName << "...";
+			});
+
 			time = clock();
 		}
 
-		void printTime(const string& strInfo)
+		void print(const string& strMsg="")
 		{
 			CConsole::inst().printEx([&](ostream& out) {
 				clock_t ptrTime = time;
 				time = clock();
-				out << strInfo.c_str() << ", tickCount:" << time - ptrTime;
+				out << (!strMsg.empty()? strMsg:strOperateName) << " ok, tickCount:" << time - ptrTime;
 			});
 		}
-
-		void printTime(const function<void(ostream& out)>& fnCB)
-		{
-			CConsole::inst().printEx([&](ostream& out) {
-				fnCB(out);
-
-				clock_t ptrTime = time;
-				time = clock();
-				out << ", tickCount:" << time - ptrTime;
-			});
-		}
-
-		clock_t time = 0;
 	};
 
 	class CWinEvent
@@ -148,10 +127,6 @@ namespace NS_WinSock
 			m_hEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
 		}
 
-	private:
-		HANDLE m_hEvent = INVALID_HANDLE_VALUE;
-
-	public:
 		bool wait(DWORD dwTimeout = INFINITE)
 		{
 			return WAIT_OBJECT_0 == ::WaitForSingleObject(m_hEvent, dwTimeout);
@@ -161,55 +136,9 @@ namespace NS_WinSock
 		{
 			return TRUE==SetEvent(m_hEvent);
 		}
-	};
-
-	class CAtomicLock
-	{
-	public:
-		CAtomicLock()
-		{
-		}
 
 	private:
-		char m_cLock = 0;
-		char *m_pcLock = &m_cLock;
-
-		//UINT m_uFlag = 100;
-
-	public:
-	//#pragma intrinsic(_InterlockedCompareExchange8, _InterlockedExchange8)
-		void lock()
-		{
-			//UINT uCounter = m_uFlag;
-			while (_InterlockedCompareExchange8(m_pcLock, 1, 0))
-			{
-				//if (0 == uCounter)
-				//{
-				//	::Sleep(1);
-				//	uCounter = m_uFlag;
-				//}
-				//else
-				//{
-				//	uCounter--;
-				//}
-			}
-
-			//return false;
-		}
-
-		void forceUnlock()
-		{
-			m_cLock = 0;
-		}
-
-		//bool unlock()
-		//{
-		//	return 1 == _InterlockedExchange8(m_pcLock, 0);
-		//}
-		void unlock()
-		{
-			(void)_InterlockedExchange8(m_pcLock, 0);
-		}
+		HANDLE m_hEvent = INVALID_HANDLE_VALUE;
 	};
 
 	class CCASLock
@@ -219,23 +148,37 @@ namespace NS_WinSock
 		{
 		}
 
-	private:
-		char m_cLock = 0;
-
-	public:
-		void lock()
+		#pragma intrinsic(_InterlockedCompareExchange8, _InterlockedExchange8)
+		bool lock(UINT uRetryTimes=0, UINT uSleepTime=0)
 		{
-			char *pcLock = &m_cLock;
-			while (_InterlockedCompareExchange8(pcLock, 1, 0))
+			while (_InterlockedCompareExchange8(&m_lockFlag, 1, 0))
 			{
-				(void)::Sleep(3);
+				if (0 != uRetryTimes && 0 == --uRetryTimes)
+				{
+					return false;
+				}
+
+				if (0 == uSleepTime)
+				{
+					this_thread::yield();
+				}
+				else
+				{
+					::Sleep(uSleepTime);
+				}
 			}
+
+			return true;
 		}
 
 		void unlock()
 		{
-			m_cLock = 0;
+			//m_lockFlag = 0;
+			(void)_InterlockedExchange8(&m_lockFlag, 0);
 		}
+
+	private:
+		char m_lockFlag = 0;
 	};
 
 	class CCharVector

@@ -95,12 +95,11 @@ namespace NS_WinSock
 					pAcceptSockNode->addNextNode(&WinSock);
 				}
 				uFreeCount++;
-
-				return true;
 			}))
 			{
 				break;
 			}
+
 			Sleep(10);
 		}
 
@@ -186,12 +185,9 @@ namespace NS_WinSock
 		{
 			if (0 < acceptSockMgr.fetchRecycle(uNum, [&](CWinSock& WinSock) {
 				lstAcceptSock.push_back(&WinSock);
-
-				return true;
+				uFreeCount++;
 			}))
 			{
-				uFreeCount = (UINT)lstAcceptSock.size();
-
 				break;
 			}
 

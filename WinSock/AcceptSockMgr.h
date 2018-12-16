@@ -16,7 +16,7 @@ namespace NS_WinSock
 	};
 
 	class CAcceptSockMgr;
-	using CB_AcceptSockMgr = function<bool(CAcceptSockMgr& AcceptSockMgr, CWinSock& WinSock)>;
+	using FN_AcceptSockMgrCB = function<bool(CAcceptSockMgr& AcceptSockMgr, CWinSock& WinSock)>;
 
 	class CAcceptSockMgr
 	{
@@ -54,7 +54,7 @@ namespace NS_WinSock
 		tagAcceptSockSum m_sum;
 
 	public:
-		void init(const CB_AcceptSockMgr& cbAccept, const CB_AcceptSockMgr& cbRecycle);
+		void init(const FN_AcceptSockMgrCB& fnOnAccepted, const FN_AcceptSockMgrCB& fnShuntdown);
 
 		void newAccept(CWinSock *pWinSock);
 
@@ -68,23 +68,7 @@ namespace NS_WinSock
 
 		UINT fetchRecycle(UINT uCount, const function<void(CWinSock& socClient)>& fnCB);
 
-		UINT addMsg(const char* lpMsg, UINT uLen)
-		{
-			vector<char> vecRecvData(uLen);
-			memcpy(&vecRecvData[0], lpMsg, uLen);
-
-			lock_guard<mutex> lock(m_mtxMsg);
-			if (m_lstRecvMsg.size() >= m_uMaxMsgCount)
-			{
-				m_lstRecvMsg.pop_front();
-			}
-
-			m_lstRecvMsg.push_back(vecRecvData);
-
-			m_sum.uHistoryMsgSum++;
-
-			return (UINT)m_lstRecvMsg.size();
-		}
+		UINT addMsg(const char* lpMsg, UINT uLen);
 
 	private:
 		void remove(const list<CWinSock*>& lstRemov);

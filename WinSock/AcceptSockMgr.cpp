@@ -5,7 +5,7 @@
 
 namespace NS_WinSock
 {
-	void CAcceptSockMgr::init(const CB_AcceptSockMgr& cbAccept, const CB_AcceptSockMgr& cbRecycle)
+	void CAcceptSockMgr::init(const FN_AcceptSockMgrCB& fnOnAccepted, const FN_AcceptSockMgrCB& fnShuntdown)
 	{
 		m_thrNewAccept = thread([=] {
 			while (!m_bShutdown)
@@ -30,7 +30,7 @@ namespace NS_WinSock
 				list<CWinSock*> lstAcceptFail;
 				for (auto itr = lstNewAccept.begin(); itr != lstNewAccept.end(); )
 				{
-					if (!cbAccept(*this, **itr))
+					if (!fnOnAccepted(*this, **itr))
 					{
 						lstAcceptFail.push_back(*itr);
 
@@ -82,7 +82,7 @@ namespace NS_WinSock
 				list<CWinSock*> lstDelete;
 				for (auto itr = lstRecycle.begin(); itr != lstRecycle.end(); )
 				{
-					if (!cbRecycle(*this, **itr))
+					if (!fnShuntdown(*this, **itr))
 					{
 						lstDelete.push_back(*itr);
 						itr = lstRecycle.erase(itr);
@@ -218,5 +218,23 @@ namespace NS_WinSock
 		m_sum.uRecycleCount = (UINT)m_lstRecycleSock.size();
 
 		return uRet;
+	}
+
+	UINT CAcceptSockMgr::addMsg(const char* lpMsg, UINT uLen)
+	{
+		vector<char> vecRecvData(uLen);
+		memcpy(&vecRecvData[0], lpMsg, uLen);
+
+		lock_guard<mutex> lock(m_mtxMsg);
+		if (m_lstRecvMsg.size() >= m_uMaxMsgCount)
+		{
+			m_lstRecvMsg.pop_front();
+		}
+
+		m_lstRecvMsg.push_back(vecRecvData);
+
+		m_sum.uHistoryMsgSum++;
+
+		return (UINT)m_lstRecvMsg.size();
 	}
 };
