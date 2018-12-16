@@ -21,7 +21,7 @@ namespace NS_WinSock
 		return true;
 	}
 
-	E_WinSockResult CWinSockClient::connect(DWORD dwTimeout)
+	E_WinSockResult CWinSockClient::connect(bool bWait, DWORD dwTimeout)
 	{
 		auto eRet = __super::connect(m_addrServer);
 		if (E_WinSockResult::WSR_OK == eRet)
@@ -32,7 +32,7 @@ namespace NS_WinSock
 		{
 			m_eStatus = E_SockConnStatus::SCS_Connecting;
 
-			if (0 != dwTimeout)
+			if (bWait)
 			{
 				return checkConnected(dwTimeout);
 			}

@@ -21,7 +21,7 @@ namespace NS_WinSock
 	public:
 		bool create(const char *pszServerAddr, UINT uServerPort, bool bOverLapped, bool bNoBlock);
 
-		E_WinSockResult connect(DWORD dwTimeout=0);
+		E_WinSockResult connect(bool bWait=false, DWORD dwTimeout=0);
 
 		E_WinSockResult checkConnected(DWORD dwTimeout=0);
 

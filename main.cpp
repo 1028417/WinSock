@@ -71,12 +71,14 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 
 				break;
 			case E_ClientSockOperate::CSO_checkConnected:
-				if (E_WinSockResult::WSR_OK == socClient.checkConnected(0))
+				if (E_WinSockResult::WSR_OK != socClient.checkConnected(0))
 				{
-					if (!socClient.poolBind(fnRecvCPCB))
-					{
-						return false;
-					}
+					return false;
+				}
+
+				if (!socClient.poolBind(fnRecvCPCB))
+				{
+					return false;
 				}
 
 				break;
@@ -162,7 +164,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 			}
 
 			while (true)
-			{ 
+			{
 				if (para.bRestartClient || para.bQuit)
 				{
 					break;
@@ -170,28 +172,41 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 
 				for (UINT uIndex = 0; uIndex < ClientGroup.vecWinSockClient.size(); uIndex++)
 				{
-					if (uIndex % 100 == 0)
+					if (para.bRestartClient || para.bQuit)
 					{
-						::Sleep(4);
-					}
-					else
-					{
-						//::Sleep(0);
+						break;
 					}
 
 					auto& socClient = ClientGroup.vecWinSockClient[uIndex];
 				
 					if (para.bAutoReconn)
 					{
-						if (E_SockConnStatus::SCS_Connected == socClient.getStatus())
+						::Sleep(1);
+						
+						if (E_SockConnStatus::SCS_Connecting == socClient.getStatus())
 						{
-							fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Send);
-							
+							if (!fnClientSockOperate(socClient, E_ClientSockOperate::CSO_checkConnected))
+							{
+								(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Close);
+							}
+							else
+							{
+								if (1)
+								{
+									//fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Send);
+
+									(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Close);
+									(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Create);
+									(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Connect);
+								}
+							}
+						}
+						else if (E_SockConnStatus::SCS_Connected == socClient.getStatus())
+						{
 							(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Close);
 							
 							if (0)
 							{
-								::Sleep(0);
 								(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Create);
 								(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Connect);
 							}
@@ -200,26 +215,15 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 						{
 							(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Create);
 							(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Connect);
-
-							if (0)
-							{
-								::Sleep(0);
-								if (!fnClientSockOperate(socClient, E_ClientSockOperate::CSO_checkConnected))
-								{
-									(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Close);
-								}
-							}
-						}
-						else if (E_SockConnStatus::SCS_Connecting == socClient.getStatus())
-						{
-							if (!fnClientSockOperate(socClient, E_ClientSockOperate::CSO_checkConnected))
-							{
-								(void)fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Close);
-							}
 						}
 					}
 					else
 					{
+						if (uIndex % 50 == 0)
+						{
+							::Sleep(3);
+						}
+
 						if (E_SockConnStatus::SCS_Connected == socClient.getStatus())
 						{
 							fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Send);
@@ -293,22 +297,23 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 
 		CConsole::inst().printEx([&](ostream& out) {
 			out << "Active Client:" << acceptSockSum.uCurrConnCount
-				<< " Current Recycled:" << acceptSockSum.uRecycleCount
+				<< " Recycled:" << acceptSockSum.uRecycleCount
 				<< " History Connected:" << acceptSockSum.uHistoryConnSum
 				<< " History Recycled:" << acceptSockSum.uHistoryRecycleSum
 				<< " Total Message:" << acceptSockSum.uHistoryMsgSum;
 
 			UINT uAcceptSum = 0;
 			UINT uFreeSum = 0;
+			UINT uIndex = 0;
 			for (auto pr : lstSnapshot)
 			{
 				uAcceptSum += pr.first;
 				uFreeSum += pr.second;
 
-				out << "\nAccpNum:" << pr.first << " FreeNum:" << pr.second;
+				out << "\nthread" << ++uIndex << " Accept:" << pr.first << " Free:" << pr.second;
 			}
 
-			out << "\nAcceptSum:" << uAcceptSum << " FreeSum:" << uFreeSum << '\n';
+			out << "\nsum            " << uAcceptSum << "      " << uFreeSum << '\n';
 		});
 	};
 

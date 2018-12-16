@@ -55,6 +55,15 @@ namespace NS_WinSock
 	CWinSock* tagAcceptSockNodeList::createNodes(UINT uNum)
 	{
 		m_uIncr = uNum / 10;
+		if (0 == m_uIncr)
+		{
+			m_uIncr = 1;
+		}
+
+		if (0 == uNum)
+		{
+			uNum = 1;
+		}
 		uNum += m_uIncr;
 
 		while (uNum--)
@@ -155,6 +164,15 @@ namespace NS_WinSock
 	CWinSock *tagAcceptSockList::createNodes(UINT uNum)
 	{
 		m_uIncr = uNum / 10;
+		if (0 == m_uIncr)
+		{
+			m_uIncr = 1;
+		}
+
+		if (0 == uNum)
+		{
+			uNum = 1;
+		}
 		uNum += m_uIncr;
 
 		CWinSock *pAcceptSock = NULL;

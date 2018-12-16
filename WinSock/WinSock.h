@@ -14,6 +14,7 @@ namespace NS_WinSock
 		WSR_Error
 		, WSR_OK
 		, WSR_EWOULDBLOCK
+		, WSR_PeerClosed
 		, WSR_Timeout
 	};
 
@@ -202,11 +203,11 @@ namespace NS_WinSock
 		tagSendData m_sendData;
 
 	private:
-		int _receive(LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesRecvd, LPWSAOVERLAPPED lpOverlapped = NULL);
-
 		E_WinSockResult _sendEx();
 
-		void handleRecvCB(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey);
+		void _handleRecvCB(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey);
+
+		void _onPeerShutdowned();
 
 	protected:
 		void* GetExtensionFunction(GUID guid);
@@ -215,16 +216,15 @@ namespace NS_WinSock
 
 		int accept(SOCKET& socClient, sockaddr_in& addrClient);
 
+		E_WinSockResult connect(const sockaddr_in& addr);
+
+		E_WinSockResult waitEvent(WSAEVENT hSockEvent, long& lEvent, map<UINT, int>& mapEventErr, DWORD dwTimeout = 0);
+
+	protected:
 		virtual bool acceptCB()
 		{
 			return true;
 		}
-
-		E_WinSockResult acceptEx(SOCKET socAccept, PVOID lpOutputBuffer, DWORD dwReceiveDataLength, OVERLAPPED& overlapped);
-
-		E_WinSockResult connect(const sockaddr_in& addr);
-
-		E_WinSockResult waitEvent(WSAEVENT hSockEvent, long& lEvent, map<UINT, int>& mapEventErr, DWORD dwTimeout = 0);
 
 		virtual void handleCPCallback(OVERLAPPED_ENTRY *lpOverlappedEntry, ULONG ulNumEntries) override;
 
@@ -254,20 +254,17 @@ namespace NS_WinSock
 
 		bool poolBind(const CB_RecvCB& fnRecvCB = NULL, const CB_PeerShutdownedCB& fnPeerShutdownedCB = NULL);
 
-		E_WinSockResult send(char* lpData, DWORD& uLen);
+		E_WinSockResult send(char* lpData, size_t uLen, DWORD *pdwSentLen=NULL);
 
-		E_WinSockResult sendEx(char* lpData, DWORD& uLen);
+		E_WinSockResult sendEx(char* lpData, size_t uLen);
 		
-		E_WinSockResult receive(char* lpBuff, DWORD& uLen);
-		E_WinSockResult receive(vector<WSABUF>& vecBuff, DWORD& dwNumberOfBytesRecv);
+		E_WinSockResult receive(char* lpBuff, size_t uBuffSize, DWORD& uRecvLen);
 
 		E_WinSockResult receiveEx();
 
 		bool cancelIO(LPOVERLAPPED lpOverlapped = NULL);
 
 		bool disconnect();
-
-		virtual void onPeerShutdowned();
 
 		bool close(bool bLinger = false, int lingerTime = 0);
 	};

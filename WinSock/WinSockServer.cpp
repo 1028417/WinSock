@@ -216,21 +216,21 @@ namespace NS_WinSock
 	void CWinSockServer::handleCPCallback(OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
 	{
 		auto& perIOData = (tagAcceptPerIOData&)overlapped;
-		CWinSock *pAcceptSock = perIOData.getAcceptSock();
-		if (NULL == pAcceptSock)
+		CWinSock *pCurrAccept = perIOData.getAcceptSock();
+		if (NULL == pCurrAccept)
 		{
 			return;
 		}
 
-		m_AcceptSockMgr.newAccept(pAcceptSock);
+		m_AcceptSockMgr.newAccept(pCurrAccept);
 
-		pAcceptSock = perIOData.forward(m_AcceptSockMgr);
-		if (NULL == pAcceptSock)
+		CWinSock *pNewAccept = perIOData.forward(m_AcceptSockMgr);
+		if (NULL == pNewAccept)
 		{
 			return;
 		}
 
-		if (E_WinSockResult::WSR_OK != _acceptEx(pAcceptSock->getSockHandle(), perIOData))
+		if (E_WinSockResult::WSR_OK != _acceptEx(pNewAccept->getSockHandle(), perIOData))
 		{
 			return;
 		}
