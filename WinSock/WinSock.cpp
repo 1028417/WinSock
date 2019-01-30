@@ -1,6 +1,8 @@
 
 #include "WinSock.h"
 
+#include "Console.h"
+
 #pragma comment(lib, "WS2_32.lib")
 #pragma comment(lib, "MsWSock.lib")
 

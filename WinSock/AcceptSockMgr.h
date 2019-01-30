@@ -22,6 +22,8 @@ namespace NS_WinSock
 	{
 	public:
 		CAcceptSockMgr()
+			: m_evNewAccept(FALSE)
+			, m_evNewRecycle(FALSE)
 		{
 			m_uMaxMsgCount = 100;
 		}

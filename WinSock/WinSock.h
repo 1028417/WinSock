@@ -1,7 +1,18 @@
 
 #pragma once
 
-#include "util.h"
+#include <list>
+using std::list;
+
+#include <map>
+using std::map;
+
+#include <WinSock2.h>
+
+#include "mtutil.h"
+using namespace NS_mtutil;
+
+#include "CharVector.h"
 
 #include "IOCP.h"
 

@@ -13,9 +13,6 @@
     <ClInclude Include="WinSock\IOCP.h">
       <Filter>WinSock</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\util.h">
-      <Filter>WinSock</Filter>
-    </ClInclude>
     <ClInclude Include="WinSock\PerIOData.h">
       <Filter>WinSock</Filter>
     </ClInclude>
@@ -23,6 +20,15 @@
       <Filter>WinSock</Filter>
     </ClInclude>
     <ClInclude Include="WinSock\AcceptSockNode.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\CharVector.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\Console.h">
+      <Filter>WinSock</Filter>
+    </ClInclude>
+    <ClInclude Include="WinSock\mtutil.h">
       <Filter>WinSock</Filter>
     </ClInclude>
   </ItemGroup>

@@ -149,9 +149,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="WinSock\AcceptSockNode.h" />
+    <ClInclude Include="WinSock\CharVector.h" />
+    <ClInclude Include="WinSock\Console.h" />
     <ClInclude Include="WinSock\IOCP.h" />
+    <ClInclude Include="WinSock\mtutil.h" />
     <ClInclude Include="WinSock\PerIOData.h" />
-    <ClInclude Include="WinSock\util.h" />
     <ClInclude Include="WinSock\AcceptSockMgr.h" />
     <ClInclude Include="WinSock\WinSock.h" />
     <ClInclude Include="WinSock\WinSockClient.h" />

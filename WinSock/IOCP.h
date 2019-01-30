@@ -1,6 +1,12 @@
 #pragma once
 
-#include "util.h"
+#include <mutex>
+
+using namespace std;
+
+#include <WinSock2.h>
+
+#include <mswsock.h>
 
 #include "PerIOData.h"
 

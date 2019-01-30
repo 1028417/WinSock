@@ -1,4 +1,7 @@
 
+
+#include "WinSock/Console.h"
+
 #include "WinSock/WinSockServer.h"
 
 #include "WinSock/WinSockClient.h"
@@ -116,7 +119,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 	};
 	vector<tagClientGroup> vecClientGroup(uGroupCount);
 
-	tagTImer timer("createClients");
+	tagClock timer("createClients");
 	for (auto& ClientGroup : vecClientGroup)
 	{
 		ClientGroup.vecWinSockClient.resize(uClientCount/uGroupCount);
@@ -130,7 +133,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 	}
 	timer.print();
 
-	timer = tagTImer("connectServer(no-block)");
+	timer = tagClock("connectServer(no-block)");
 	for (auto& ClientGroup : vecClientGroup)
 	{
 		ClientGroup.thrConn = thread([&] {
@@ -254,7 +257,7 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 		uGroupCount = uClientCount;
 	}
 
-	tagTImer clock("createServer");
+	tagClock clock("createServer");
 	if (!CWinSock::init(2, 2))
 	{
 		CConsole::inst().print("CWinSock::init fail");
@@ -355,7 +358,7 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 			char lpBC[10]{ 0 };
 			if (1 == sscanf_s(strInput.c_str(), "bc:%9s", lpBC, (UINT)sizeof(lpBC)))
 			{
-				tagTImer clock("broadcast");
+				tagClock clock("broadcast");
 				UINT uRet = WinSockServer.broadcast(lpBC);
 				clock.print("broadcasted: " + to_string(uRet));
 			}

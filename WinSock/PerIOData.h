@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+using std::vector;
+
 namespace NS_WinSock
 {
 	class ICPCallback;
