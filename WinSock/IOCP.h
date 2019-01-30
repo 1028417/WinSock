@@ -19,16 +19,7 @@ namespace NS_WinSock
 		virtual void handleCPCallback(OVERLAPPED_ENTRY *lpOverlappedEntry, ULONG ulNumEntries) = 0;
 	};
 
-	interface IIOCP
-	{
-		virtual bool create(UINT uThreadCount, UINT uNumQuery, SOCKET sock = INVALID_SOCKET)=0;
-
-		virtual bool bind(SOCKET sock)=0;
-
-		virtual bool shutdown()=0;
-	};
-
-	class CIOCP : public IIOCP
+	class CIOCP
 	{
 		friend void _iocpThread(LPVOID pPara);
 		friend bool CIOCP::bind(SOCKET sock, CIOCP *pIOCP);
