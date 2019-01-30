@@ -11,22 +11,6 @@ using VEC_OVERLAPPED_ENTRY = vector<OVERLAPPED_ENTRY>;
 
 namespace NS_WinSock
 {
-	bool checkNTStatus(ULONG_PTR Internal)
-	{
-		if (STATUS_SUCCESS != Internal)
-		{
-			if (STATUS_CANCELLED != Internal && STATUS_CONNECTION_ABORTED != Internal
-				&& STATUS_CONNECTION_RESET != Internal && STATUS_REMOTE_DISCONNECT != Internal && STATUS_PENDING != Internal)
-			{
-				CWinSock::printSockErr("checkNTStatus", (int)Internal);
-			}
-
-			return false;
-		}
-
-		return true;
-	}
-
 	static void _processCallback(ICPCallback *pIOCPHandler, VEC_OVERLAPPED_ENTRY& vecOverlappedEntry)
 	{
 		if (NULL != pIOCPHandler)

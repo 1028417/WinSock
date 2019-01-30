@@ -52,8 +52,6 @@ namespace NS_WinSock
 		bool _queryIOCP();
 
 	public:
-		static bool checkNTStatus(ULONG_PTR Internal);
-
 		static bool poolBind(SOCKET sock);
 
 		bool create(UINT uThreadCount, UINT uNumQuery, SOCKET sock = INVALID_SOCKET);
