@@ -30,12 +30,6 @@ namespace NS_WinSock
 			return false;
 		}
 
-		/*SYSTEM_INFO si;
-		memset(&si, 0, sizeof si);
-		GetSystemInfo(&si);
-		m_maxConcurrency = si.dwNumberOfProcessors;*/
-		//m_maxConcurrency = thread::hardware_concurrency();
-
 		return true;
 	}
 
