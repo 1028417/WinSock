@@ -16,7 +16,7 @@ namespace NS_WinSock
 		if (STATUS_SUCCESS != Internal)
 		{
 			if (STATUS_CANCELLED != Internal && STATUS_CONNECTION_ABORTED != Internal
-				&& STATUS_CONNECTION_RESET != Internal && STATUS_REMOTE_DISCONNECT != Internal)
+				&& STATUS_CONNECTION_RESET != Internal && STATUS_REMOTE_DISCONNECT != Internal && STATUS_PENDING != Internal)
 			{
 				CWinSock::printSockErr("checkNTStatus", (int)Internal);
 			}

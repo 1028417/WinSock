@@ -400,7 +400,7 @@ namespace NS_WinSock
 		return true;
 	}
 
-	E_WinSockResult CWinSock::send(char* lpData, size_t uLen, DWORD *pdwSentLen)
+	E_WinSockResult CWinSock::send(char* lpData, ULONG uLen, DWORD *pdwSentLen)
 	{
 		if (NULL == lpData || 0 == uLen)
 		{
@@ -431,7 +431,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	E_WinSockResult CWinSock::sendEx(char* lpData, size_t uLen)
+	E_WinSockResult CWinSock::sendEx(char* lpData, ULONG uLen)
 	{
 		if (NULL == lpData || 0 == uLen)
 		{
@@ -493,7 +493,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	E_WinSockResult CWinSock::receive(char* lpBuff, size_t uBuffSize, DWORD& uRecvLen)
+	E_WinSockResult CWinSock::receive(char* lpBuff, ULONG uBuffSize, DWORD& uRecvLen)
 	{
 		WSABUF buff;
 		buff.buf = lpBuff;

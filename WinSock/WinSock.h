@@ -254,11 +254,11 @@ namespace NS_WinSock
 
 		bool poolBind(const CB_RecvCB& fnRecvCB = NULL, const CB_PeerShutdownedCB& fnPeerShutdownedCB = NULL);
 
-		E_WinSockResult send(char* lpData, size_t uLen, DWORD *pdwSentLen=NULL);
+		E_WinSockResult send(char* lpData, ULONG uLen, DWORD *pdwSentLen=NULL);
 
-		E_WinSockResult sendEx(char* lpData, size_t uLen);
+		E_WinSockResult sendEx(char* lpData, ULONG uLen);
 		
-		E_WinSockResult receive(char* lpBuff, size_t uBuffSize, DWORD& uRecvLen);
+		E_WinSockResult receive(char* lpBuff, ULONG uBuffSize, DWORD& uRecvLen);
 
 		E_WinSockResult receiveEx();
 

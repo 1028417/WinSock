@@ -28,7 +28,6 @@ namespace NS_WinSock
 
 		if (!listen(uPort))
 		{
-			printSockErr("bind");
 			return false;
 		}
 

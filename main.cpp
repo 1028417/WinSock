@@ -57,14 +57,14 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 			switch (eOperate)
 			{
 			case E_ClientSockOperate::CSO_Create:
-				if (!socClient.create(__ServerIP, __ServerPort, true, true))
+				if (!socClient.create(true, true))
 				{
 					return false;
 				}
 
 				break;
 			case E_ClientSockOperate::CSO_Connect:
-				if (E_WinSockResult::WSR_Error == socClient.connect())
+				if (E_WinSockResult::WSR_Error == socClient.connect(__ServerIP, __ServerPort))
 				{
 					return false;
 				}

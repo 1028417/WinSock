@@ -7,23 +7,15 @@
 
 namespace NS_WinSock
 {
-	bool CWinSockClient::create(const char *pszServerAddr, UINT uServerPort, bool bOverLapped, bool bNoBlock)
+	E_WinSockResult CWinSockClient::connect(const char *pszServerAddr, UINT uServerPort, bool bWait, DWORD dwTimeout)
 	{
-		if (!__super::create(bOverLapped, bNoBlock))
-		{
-			return false;
-		}
+		sockaddr_in addrServer;
+		memset(&addrServer, 0, sizeof addrServer);
+		addrServer.sin_family = AF_INET;
+		addrServer.sin_port = htons(uServerPort);
+		(void)inet_pton(AF_INET, pszServerAddr, (void*)&addrServer.sin_addr.S_un.S_addr);
 
-		m_addrServer.sin_family = AF_INET;
-		m_addrServer.sin_port = htons(uServerPort);
-		(void)inet_pton(AF_INET, pszServerAddr, (void*)&m_addrServer.sin_addr.S_un.S_addr);
-
-		return true;
-	}
-
-	E_WinSockResult CWinSockClient::connect(bool bWait, DWORD dwTimeout)
-	{
-		auto eRet = __super::connect(m_addrServer);
+		auto eRet = __super::connect(addrServer);
 		if (E_WinSockResult::WSR_OK == eRet)
 		{
 			m_eStatus = E_SockConnStatus::SCS_Connected;
