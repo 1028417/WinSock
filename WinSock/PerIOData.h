@@ -2,7 +2,7 @@
 
 namespace NS_WinSock
 {
-	interface ICPCallback;
+	class ICPCallback;
 	struct tagPerIOData : OVERLAPPED
 	{
 		tagPerIOData(ICPCallback& t_iocpHandler, ULONG ulWSABUFSize, char *pWSABUF)

@@ -1,6 +1,4 @@
 
-#include "stdafx.h"
-
 #include "WinSockClient.h"
 
 #include <WS2tcpip.h>

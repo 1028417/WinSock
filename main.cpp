@@ -1,6 +1,4 @@
 
-#include "stdafx.h"
-
 #include "WinSock/WinSockServer.h"
 
 #include "WinSock/WinSockClient.h"

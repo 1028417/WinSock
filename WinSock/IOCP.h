@@ -14,8 +14,11 @@ namespace NS_WinSock
 {
 	bool checkNTStatus(ULONG_PTR Internal);
 
-	interface ICPCallback
+	class ICPCallback
 	{
+	public:
+		ICPCallback() {}
+
 		virtual void handleCPCallback(OVERLAPPED_ENTRY *lpOverlappedEntry, ULONG ulNumEntries) = 0;
 	};
 

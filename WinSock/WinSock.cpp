@@ -1,6 +1,4 @@
 
-#include "stdafx.h"
-
 #include "WinSock.h"
 
 #pragma comment(lib, "WS2_32.lib")

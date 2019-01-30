@@ -1,6 +1,4 @@
 
-#include "stdafx.h"
-
 #include "WinSockServer.h"
 
 namespace NS_WinSock

@@ -1,6 +1,4 @@
 
-#include "stdafx.h"
-
 #include "AcceptSockMgr.h"
 
 namespace NS_WinSock
