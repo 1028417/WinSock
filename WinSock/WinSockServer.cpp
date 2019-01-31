@@ -44,13 +44,8 @@ namespace NS_WinSock
 			CB_PeerShutdownedCB fnPeerShutdownedCB = [&](CWinSock& WinSock) {
 				AcceptSockMgr.newRecycle(&WinSock);
 			};
-
-			if (!WinSock.poolBind(fnRecvCB, fnPeerShutdownedCB))
-			{
-				return false;
-			}
-
-			if (E_WinSockResult::WSR_OK != WinSock.receiveEx())
+			
+			if (E_WinSockResult::WSR_OK != WinSock.receiveEx(fnRecvCB, fnPeerShutdownedCB))
 			{
 				return false;
 			}
@@ -182,7 +177,7 @@ namespace NS_WinSock
 
 		m_AcceptSockMgr.enumerate([&](CWinSock& sock) {
 			DWORD uLen = (DWORD)strData.size();
-			if (E_WinSockResult::WSR_OK == sock.sendEx((char*)strData.c_str(), uLen))
+			if (E_WinSockResult::WSR_OK == sock.send((char*)strData.c_str(), uLen))
 			{
 				uCount++;
 			}

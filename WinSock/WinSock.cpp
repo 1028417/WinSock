@@ -103,10 +103,7 @@ namespace NS_WinSock
 
 		if (bNoBlock)
 		{
-			if (!setNoBlock(bNoBlock))
-			{
-				return false;
-			}
+			(void)setNoBlock(bNoBlock);
 		}
 
 		m_eStatus = E_SockConnStatus::SCS_None;
@@ -127,12 +124,17 @@ namespace NS_WinSock
 
 	bool CWinSock::setNoBlock(bool bVal)
 	{
-		u_long argp = bVal ? 1 : 0;
-		int iRet = ioctlsocket(m_sock, FIONBIO, &argp);
-		if (SOCKET_ERROR == iRet)
+		if (bVal != m_bNoBlock)
 		{
-			printSockErr("ioctlsocket");
-			return false;
+			u_long argp = bVal ? 1 : 0;
+			int iRet = ioctlsocket(m_sock, FIONBIO, &argp);
+			if (SOCKET_ERROR == iRet)
+			{
+				printSockErr("ioctlsocket");
+				return false;
+			}
+
+			m_bNoBlock = bVal;
 		}
 
 		return true;
@@ -401,10 +403,30 @@ namespace NS_WinSock
 			return E_WinSockResult::WSR_Error;
 		}
 
+		if (m_bNoBlock)
+		{
+			m_sendData.add(lpData, uLen);
+
+			if (m_bAyncSending)
+			{
+				return E_WinSockResult::WSR_OK;
+			}
+
+			if (NULL == m_pSendPerIO)
+			{
+				m_pSendPerIO = tagSendPerIOData::alloc(*this);
+			}
+			else
+			{
+				m_pSendPerIO->asign(*this);
+			}
+
+			return _sendEx();
+		}
+
 		WSABUF wsaBuf;
 		wsaBuf.buf = lpData;
 		wsaBuf.len = uLen;
-		uLen = 0;
 		int iRet = WSASend(m_sock, &wsaBuf, 1, pdwSentLen, 0, NULL, NULL);
 		if (SOCKET_ERROR == iRet)
 		{
@@ -425,35 +447,9 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	E_WinSockResult CWinSock::sendEx(char* lpData, ULONG uLen)
-	{
-		if (NULL == lpData || 0 == uLen)
-		{
-			return E_WinSockResult::WSR_Error;
-		}
-		
-		m_sendData.add(lpData, uLen);
-
-		if (m_bAyncSending)
-		{
-			return E_WinSockResult::WSR_OK;
-		}
-
-		return _sendEx();
-	}
-
 	E_WinSockResult CWinSock::_sendEx()
 	{
 		m_bAyncSending = true;
-
-		if (NULL == m_pSendPerIO)
-		{
-			m_pSendPerIO = tagSendPerIOData::alloc(*this);
-		}
-		else
-		{
-			m_pSendPerIO->asign(*this);
-		}
 
 		m_pSendPerIO->wsaBuf.len = (ULONG)m_sendData.get(m_pSendPerIO->wsaBuf.buf, __SendPerIO_BuffSize);
 		if (0 == m_pSendPerIO->wsaBuf.len)
@@ -513,9 +509,14 @@ namespace NS_WinSock
 
 		return E_WinSockResult::WSR_OK;
 	}
-
-	E_WinSockResult CWinSock::receiveEx()
+	
+	E_WinSockResult CWinSock::receiveEx(const CB_RecvCB& fnRecvCB, const CB_PeerShutdownedCB& fnPeerShutdownedCB, CIOCP *pIOCP)
 	{
+		if (!setNoBlock(true))
+		{
+			return E_WinSockResult::WSR_Error;
+		}
+
 		if (NULL == m_pRecvPerIO)
 		{
 			m_pRecvPerIO = tagRecvPerIOData::alloc(*this);
@@ -525,6 +526,30 @@ namespace NS_WinSock
 			m_pRecvPerIO->asign(*this);
 		}
 
+		m_fnRecvCB = fnRecvCB;
+
+		m_fnPeerShutdownedCB = fnPeerShutdownedCB;
+
+		if (NULL != pIOCP)
+		{
+			if (!pIOCP->bind(m_sock))
+			{
+				return E_WinSockResult::WSR_Error;
+			}
+		}
+		else
+		{
+			if (!CIOCP::poolBind(m_sock))
+			{
+				return E_WinSockResult::WSR_Error;
+			}
+		}
+
+		return _receiveEx();
+	}
+
+	E_WinSockResult CWinSock::_receiveEx()
+	{
 		DWORD dwFlag = 0;
 		int iRet = ::WSARecv(m_sock, &m_pRecvPerIO->wsaBuf, 1, NULL, &dwFlag, m_pRecvPerIO, NULL);
 		if (SOCKET_ERROR == iRet)
@@ -549,25 +574,6 @@ namespace NS_WinSock
 		}
 
 		return E_WinSockResult::WSR_OK;
-	}
-
-	bool CWinSock::poolBind(const CB_RecvCB& fnRecvCB, const CB_PeerShutdownedCB& fnPeerShutdownedCB)
-	{
-		if (!setNoBlock(true))
-		{
-			return false;
-		}
-		
-		if (!CIOCP::poolBind(m_sock))
-		{
-			return false;
-		}
-
-		m_fnRecvCB = fnRecvCB;
-
-		m_fnPeerShutdownedCB = fnPeerShutdownedCB;
-		
-		return true;
 	}
 
 	static bool checkNTStatus(ULONG_PTR Internal)
@@ -600,7 +606,7 @@ namespace NS_WinSock
 				OVERLAPPED& overLapped = *lpOverlappedEntry->lpOverlapped;
 				if (STATUS_REMOTE_DISCONNECT == lpOverlappedEntry->Internal || STATUS_REMOTE_DISCONNECT == overLapped.Internal)
 				{
-					_onPeerShutdowned();
+					_onPeerClosed();
 				}
 				else
 				{
@@ -625,8 +631,6 @@ namespace NS_WinSock
 		else if (&overLapped == m_pSendPerIO)
 		{
 			_sendEx();
-
-			return;
 		}
 	}
 
@@ -642,7 +646,7 @@ namespace NS_WinSock
 			auto eRet = this->receive(lpBuff, sizeof(lpBuff), uRecvLen);
 			if (E_WinSockResult::WSR_OK != eRet || 0 == uRecvLen)
 			{
-				_onPeerShutdowned();
+				_onPeerClosed();
 				
 				return;
 			}
@@ -656,7 +660,7 @@ namespace NS_WinSock
 				{
 					if (E_WinSockResult::WSR_PeerClosed == eRet)
 					{
-						_onPeerShutdowned();
+						_onPeerClosed();
 					}
 
 					break;
@@ -671,7 +675,7 @@ namespace NS_WinSock
 		{
 			if (0 == dwNumberOfBytesTransferred)
 			{
-				_onPeerShutdowned();
+				_onPeerClosed();
 				
 				return;
 			}
@@ -685,29 +689,27 @@ namespace NS_WinSock
 				return;
 			}
 		}
-		else
+
+		if (!onReceived(lpData, dwNumberOfBytesTransferred, lpCompletionKey))
 		{
-			if (!handleRecvCB(lpData, dwNumberOfBytesTransferred, lpCompletionKey))
-			{
-				return;
-			}
+			return;
 		}
 
-		if (E_WinSockResult::WSR_PeerClosed == receiveEx())
+		if (E_WinSockResult::WSR_PeerClosed == _receiveEx())
 		{
-			_onPeerShutdowned();
+			_onPeerClosed();
 		}
 	}
 
-	void CWinSock::_onPeerShutdowned()
+	void CWinSock::_onPeerClosed()
 	{
+		(void)this->close();
+
 		if (m_fnPeerShutdownedCB)
 		{
 			m_fnPeerShutdownedCB(*this);
 		}
-		else
-		{
-			(void)this->close();
-		}
+		
+		onPeerClosed();
 	}
 };

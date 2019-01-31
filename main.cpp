@@ -9,7 +9,7 @@
 using namespace NS_WinSock;
 
 #define __ServerIP "127.0.0.1"
-#define __ServerPort (IPPORT_RESERVED+1)
+#define __ServerPort (IPPORT_RESERVED+10)
 
 enum class E_ClientSockOperate
 {
@@ -77,7 +77,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 					return false;
 				}
 
-				if (!socClient.poolBind(fnRecvCPCB))
+				if (E_WinSockResult::WSR_OK != socClient.receiveEx(fnRecvCPCB))
 				{
 					return false;
 				}
@@ -86,8 +86,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 			case E_ClientSockOperate::CSO_Send:
 			{
 				char lpData[600]{ 'a' };
-				DWORD uLen = sizeof lpData;
-				socClient.sendEx(lpData, uLen);
+				socClient.send(lpData, sizeof lpData);
 
 				break;
 			}
