@@ -542,10 +542,10 @@ namespace NS_WinSock
 			poolBind();
 		}
 
-		return _receiveEx();
+		return _asyncReceive();
 	}
 
-	E_WinSockResult CWinSock::_receiveEx()
+	E_WinSockResult CWinSock::_asyncReceive()
 	{
 		DWORD dwFlag = 0;
 		int iRet = ::WSARecv(m_sock, &m_pRecvPerIO->wsaBuf, 1, NULL, &dwFlag, m_pRecvPerIO, NULL);
@@ -593,7 +593,7 @@ namespace NS_WinSock
 	{
 		if (STATUS_REMOTE_DISCONNECT == Internal || STATUS_REMOTE_DISCONNECT == perIOData.Internal)
 		{
-			_onPeerClosed();
+			onPeerClosed();
 			return;
 		}
 
@@ -623,13 +623,13 @@ namespace NS_WinSock
 		CCharVector dataVector;
 		if (0 == m_pRecvPerIO->wsaBuf.len || NULL == m_pRecvPerIO->wsaBuf.buf)
 		{
-			char lpBuff[256];
+			char lpBuff[12800];
 			memset(lpBuff, 0, sizeof lpBuff);
 			DWORD uRecvLen = 0;
 			auto eRet = this->receive(lpBuff, sizeof(lpBuff), uRecvLen);
 			if (E_WinSockResult::WSR_OK != eRet || 0 == uRecvLen)
 			{
-				_onPeerClosed();
+				onPeerClosed();
 				
 				return;
 			}
@@ -638,12 +638,14 @@ namespace NS_WinSock
 
 			while (true)
 			{
+				uRecvLen = 0;
 				eRet = this->receive(lpBuff, sizeof(lpBuff), uRecvLen);
 				if (E_WinSockResult::WSR_OK != eRet || 0 == uRecvLen)
 				{
 					if (E_WinSockResult::WSR_PeerClosed == eRet)
 					{
-						_onPeerClosed();
+						onPeerClosed();
+						return;
 					}
 
 					break;
@@ -658,19 +660,10 @@ namespace NS_WinSock
 		{
 			if (0 == dwNumberOfBytesTransferred)
 			{
-				_onPeerClosed();
-				
+				onPeerClosed();
 				return;
 			}
 			lpData = m_pRecvPerIO->wsaBuf.buf;
-		}
-
-		if (m_fnRecvCB)
-		{
-			if (!m_fnRecvCB(*this, lpData, dwNumberOfBytesTransferred))
-			{
-				return;
-			}
 		}
 
 		if (!onReceived(lpData, dwNumberOfBytesTransferred))
@@ -678,22 +671,35 @@ namespace NS_WinSock
 			return;
 		}
 
-		if (E_WinSockResult::WSR_PeerClosed == _receiveEx())
+		if (E_WinSockResult::WSR_PeerClosed == _asyncReceive())
 		{
-			_onPeerClosed();
+			onPeerClosed();
 		}
 	}
 
-	void CWinSock::_onPeerClosed()
+	bool CWinSock::onReceived(char *lpData, DWORD dwNumberOfBytesTransferred)
 	{
-		(void)this->close();
+		if (m_fnRecvCB)
+		{
+			if (!m_fnRecvCB(*this, lpData, dwNumberOfBytesTransferred))
+			{
+				return false;
+			}
+		}
 
+		return true;
+	}
+
+	void CWinSock::onPeerClosed()
+	{
+		::Sleep(10);
+
+		(void)this->close();
+		
 		if (m_fnPeerShutdownedCB)
 		{
 			m_fnPeerShutdownedCB(*this);
 		}
-		
-		onPeerClosed();
 	}
 
 	void CWinSock::poolBind()

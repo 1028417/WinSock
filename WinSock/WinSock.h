@@ -22,8 +22,8 @@ namespace NS_WinSock
 {
 	enum class E_WinSockResult
 	{
-		WSR_Error
-		, WSR_OK
+		WSR_OK
+		, WSR_Error
 		, WSR_EWOULDBLOCK
 		, WSR_PeerClosed
 		, WSR_Timeout
@@ -217,12 +217,10 @@ namespace NS_WinSock
 	private:
 		E_WinSockResult _sendEx();
 
-		E_WinSockResult _receiveEx();
+		E_WinSockResult _asyncReceive();
 
 		void _handleRecvCB(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred);
-
-		void _onPeerClosed();
-
+		
 		void handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred) override;
 
 		virtual void handleCPCallback(tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred);
@@ -244,14 +242,9 @@ namespace NS_WinSock
 			return true;
 		}
 
-		virtual bool onReceived(char *pData, DWORD dwNumberOfBytesTransferred)
-		{
-			return true;
-		}
+		virtual bool onReceived(char *lpData, DWORD dwNumberOfBytesTransferred);
 
-		virtual void onPeerClosed()
-		{
-		}
+		virtual void onPeerClosed();
 
 	public:
 		bool create(bool bOverlapped, bool bNoBlock);

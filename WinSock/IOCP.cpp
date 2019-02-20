@@ -137,36 +137,27 @@ namespace NS_WinSock
 	}
 
 
-	bool CIOCPEx::create(UINT uThreadCount, ULONG uNumQuery, const CB_IOCP& cb)
-	{
-		m_cb = cb;
+	//bool CIOCPEx::create(UINT uThreadCount, ULONG uNumQuery, const CB_IOCP& cb)
+	//{
+	//	m_cb = cb;
 
-		return __super::create(uThreadCount, uNumQuery);
-	}
+	//	return __super::create(uThreadCount, uNumQuery);
+	//}
 
-	bool CIOCPEx::bind(SOCKET sock)
-	{
-		HANDLE hRet = CreateIoCompletionPort((HANDLE)sock, m_hCompletionPort, sock, 0);
-		if (hRet != m_hCompletionPort)
-		{
-			CWinSock::printSockErr("CreateIoCompletionPort", GetLastError());
-			return false;
-		}
+	//bool CIOCPEx::bind(SOCKET sock, void *lpCompletionKey)
+	//{
+	//	HANDLE hRet = CreateIoCompletionPort((HANDLE)sock, m_hCompletionPort, (ULONG_PTR)lpCompletionKey, 0);
+	//	if (hRet != m_hCompletionPort)
+	//	{
+	//		CWinSock::printSockErr("CreateIoCompletionPort", GetLastError());
+	//		return false;
+	//	}
 
-		return true;
-	}
+	//	return true;
+	//}
 
-	void CIOCPEx::handleCPCallback(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
-	{
-		if (m_cb)
-		{
-			SOCKET sock = (SOCKET)lpCompletionKey;
-
-			m_cb(sock, Internal, overlapped, dwNumberOfBytesTransferred);
-		}
-		else
-		{
-			__super::handleCPCallback(Internal, overlapped, dwNumberOfBytesTransferred, lpCompletionKey);
-		}
-	}
+	//void CIOCPEx::handleCPCallback(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
+	//{
+	//	m_cb(Internal, overlapped, dwNumberOfBytesTransferred, (void*)lpCompletionKey);
+	//}
 };

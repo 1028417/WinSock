@@ -60,24 +60,24 @@ namespace NS_WinSock
 		bool shutdown();
 	};
 
-	using CB_IOCP = function<void(SOCKET sock, ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred)>;
+	//using CB_IOCP = function<void(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, void *lpCompletionKey)>;
 
-	class CIOCPEx : public CIOCP
-	{
-	public:
-		CIOCPEx()
-		{
-		}
+	//class CIOCPEx : public CIOCP
+	//{
+	//public:
+	//	CIOCPEx()
+	//	{
+	//	}
 
-	private:
-		CB_IOCP m_cb;
+	//private:
+	//	CB_IOCP m_cb;
 
-	public:
-		bool create(UINT uThreadCount, ULONG uNumQuery, const CB_IOCP& cb);
+	//public:
+	//	bool create(UINT uThreadCount, ULONG uNumQuery, const CB_IOCP& cb);
 
-		bool bind(SOCKET sock);
+	//	bool bind(SOCKET sock, void *lpCompletionKey);
 
-	private:
-		void handleCPCallback(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey) override;
-	};
+	//private:
+	//	void handleCPCallback(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey) override;
+	//};
 };
