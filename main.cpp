@@ -383,7 +383,7 @@ int main()
 	printf("input 'autoReconn' to test auto reconnect, 'restart' to restart all clients\n\
       'bc:xxx' to broadcast, 'exit' to quit\n\n");
 
-	UINT uFailNum = testWinSock(60, 3);
+	UINT uFailNum = testWinSock(60000, 8);
 	
 	CConsole::inst().print([uFailNum](ostream& out) {
 		out << "test finish, FailNum:" << uFailNum;
