@@ -50,7 +50,7 @@ namespace NS_WinSock
 		}
 	}
 	
-	CWinSock* tagAcceptSockNodeList::createNodes(UINT uNum)
+	CWinSock* tagAcceptSockNodeList::initNodes(UINT uNum)
 	{
 		m_uIncr = uNum / 10;
 		if (0 == m_uIncr)
@@ -88,7 +88,7 @@ namespace NS_WinSock
 		return pAcceptSockNode->pWinSock;
 	}
 
-	CWinSock* tagAcceptSockNodeList::createNodesEx(UINT uNum, CAcceptSockMgr& acceptSockMgr)
+	CWinSock* tagAcceptSockNodeList::createNewNodes(UINT uNum, CAcceptSockMgr& acceptSockMgr)
 	{
 		while (true)
 		{
@@ -146,7 +146,7 @@ namespace NS_WinSock
 			uFreeCount = 0;
 		}
 
-		return this->createNodesEx(m_uIncr, acceptSockMgr);
+		return this->createNewNodes(m_uIncr, acceptSockMgr);
 	}
 
 
@@ -159,7 +159,7 @@ namespace NS_WinSock
 		}
 	}
 
-	CWinSock *tagAcceptSockList::createNodes(UINT uNum)
+	CWinSock *tagAcceptSockList::initNodes(UINT uNum)
 	{
 		m_uIncr = uNum / 10;
 		if (0 == m_uIncr)
@@ -195,7 +195,7 @@ namespace NS_WinSock
 		return NULL;
 	}
 
-	CWinSock *tagAcceptSockList::createNodesEx(UINT uNum, CAcceptSockMgr& acceptSockMgr)
+	CWinSock *tagAcceptSockList::createNewNodes(UINT uNum, CAcceptSockMgr& acceptSockMgr)
 	{
 		while (true)
 		{
@@ -239,6 +239,6 @@ namespace NS_WinSock
 			return lstAcceptSock.front();
 		}
 		
-		return this->createNodesEx(m_uIncr, acceptSockMgr);
+		return this->createNewNodes(m_uIncr, acceptSockMgr);
 	}
 };

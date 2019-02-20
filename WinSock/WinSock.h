@@ -98,8 +98,7 @@ namespace NS_WinSock
 	};
 
 	class CWinSock;
-	using CB_RecvCB = function<bool(CWinSock& WinSock, char *pData
-		, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)>;
+	using CB_RecvCB = function<bool(CWinSock& WinSock, char *pData, DWORD dwNumberOfBytesTransferred)>;
 
 	using CB_PeerShutdownedCB = function<void(CWinSock& WinSock)>;
 
@@ -220,9 +219,13 @@ namespace NS_WinSock
 
 		E_WinSockResult _receiveEx();
 
-		void _handleRecvCB(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey);
+		void _handleRecvCB(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred);
 
 		void _onPeerClosed();
+
+		void handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred) override;
+
+		virtual void handleCPCallback(tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred);
 
 	protected:
 		void* GetExtensionFunction(GUID guid);
@@ -241,11 +244,7 @@ namespace NS_WinSock
 			return true;
 		}
 
-		virtual void handleCPCallback(OVERLAPPED_ENTRY *lpOverlappedEntry, ULONG ulNumEntries) override;
-
-		virtual void handleCPCallback(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey);
-
-		virtual bool onReceived(char *pData, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
+		virtual bool onReceived(char *pData, DWORD dwNumberOfBytesTransferred)
 		{
 			return true;
 		}
@@ -275,12 +274,14 @@ namespace NS_WinSock
 
 		E_WinSockResult receive(char* lpBuff, ULONG uBuffSize, DWORD& uRecvLen);
 
-		E_WinSockResult receiveEx(const CB_RecvCB& fnRecvCB=NULL, const CB_PeerShutdownedCB& fnPeerShutdownedCB=NULL, CIOCP *pIOCP=NULL);
+		E_WinSockResult asyncReceive(const CB_RecvCB& fnRecvCB=NULL, const CB_PeerShutdownedCB& fnPeerShutdownedCB=NULL, CIOCP *pIOCP=NULL);
 
 		bool cancelIO(LPOVERLAPPED lpOverlapped = NULL);
 
 		bool disconnect();
 
 		bool close(bool bLinger = false, int lingerTime = 0);
+
+		void poolBind();
 	};
 };

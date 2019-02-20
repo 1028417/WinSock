@@ -36,8 +36,7 @@ namespace NS_WinSock
 			//	return false;
 			//}
 
-			CB_RecvCB fnRecvCB = [&](CWinSock& WinSock, char *pData
-				, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey) {
+			CB_RecvCB fnRecvCB = [&](CWinSock& WinSock, char *pData, DWORD dwNumberOfBytesTransferred) {
 				AcceptSockMgr.addMsg(pData, dwNumberOfBytesTransferred);
 				return true;
 			};
@@ -45,7 +44,7 @@ namespace NS_WinSock
 				AcceptSockMgr.newRecycle(&WinSock);
 			};
 			
-			if (E_WinSockResult::WSR_OK != WinSock.receiveEx(fnRecvCB, fnPeerShutdownedCB))
+			if (E_WinSockResult::WSR_OK != WinSock.asyncReceive(fnRecvCB, fnPeerShutdownedCB))
 			{
 				return false;
 			}
@@ -115,7 +114,7 @@ namespace NS_WinSock
 
 		if (HasOverlappedIoCompleted(&perIOData))
 		{
-			this->handleCPCallback(perIOData, (DWORD)perIOData.InternalHigh, m_sock);
+			this->handleCPCallback(perIOData, (DWORD)perIOData.InternalHigh);
 		}
 
 		return E_WinSockResult::WSR_OK;
@@ -126,7 +125,7 @@ namespace NS_WinSock
 		return m_AcceptPerIOArray.asign(__AcceptDeliverCoefficient, *this
 			, [&](tagAcceptPerIOData& perIOData) {
 			UINT uNum = uClientCount / __AcceptDeliverCoefficient;
-			CWinSock *pAcceptSock = perIOData.createNodes(uNum);
+			CWinSock *pAcceptSock = perIOData.initNodes(uNum);
 			if (NULL == pAcceptSock)
 			{
 				return false;
@@ -148,10 +147,7 @@ namespace NS_WinSock
 			return false;
 		}
 
-		if (!CIOCP::poolBind(m_sock))
-		{
-			return false;
-		}
+		poolBind();
 
 		return true;
 	}
@@ -163,11 +159,16 @@ namespace NS_WinSock
 			return false;
 		}
 
-		if (!m_iocp.create(uIOCPThreadCount, __AcceptDeliverCoefficient, m_sock))
+		if (!m_iocp.create(uIOCPThreadCount, __AcceptDeliverCoefficient))
 		{
 			return false;
 		}
 		
+		if (!m_iocp.bind(*this))
+		{
+			return false;
+		}
+
 		return true;
 	}
 
@@ -205,10 +206,10 @@ namespace NS_WinSock
 		return true;
 	}
 
-	void CWinSockServer::handleCPCallback(OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
+	void CWinSockServer::handleCPCallback(tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred)
 	{
-		auto& perIOData = (tagAcceptPerIOData&)overlapped;
-		CWinSock *pCurrAccept = perIOData.getAcceptSock();
+		auto& AcceptPerIOData = (tagAcceptPerIOData&)perIOData;
+		CWinSock *pCurrAccept = AcceptPerIOData.getAcceptSock();
 		if (NULL == pCurrAccept)
 		{
 			return;
@@ -216,13 +217,13 @@ namespace NS_WinSock
 
 		m_AcceptSockMgr.newAccept(pCurrAccept);
 
-		CWinSock *pNewAccept = perIOData.forward(m_AcceptSockMgr);
+		CWinSock *pNewAccept = AcceptPerIOData.forward(m_AcceptSockMgr);
 		if (NULL == pNewAccept)
 		{
 			return;
 		}
 
-		if (E_WinSockResult::WSR_OK != _acceptEx(pNewAccept->getSockHandle(), perIOData))
+		if (E_WinSockResult::WSR_OK != _acceptEx(pNewAccept->getSockHandle(), AcceptPerIOData))
 		{
 			return;
 		}

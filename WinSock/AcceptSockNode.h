@@ -39,8 +39,8 @@ namespace NS_WinSock
 
 		~tagAcceptSockNodeList();
 
-		CWinSock* createNodes(UINT uNum);
-		CWinSock* createNodesEx(UINT uNum, CAcceptSockMgr& acceptSockMgr);
+		CWinSock* initNodes(UINT uNum);
+		CWinSock* createNewNodes(UINT uNum, CAcceptSockMgr& acceptSockMgr);
 
 		CWinSock* getAcceptSock();
 
@@ -62,8 +62,8 @@ namespace NS_WinSock
 
 		~tagAcceptSockList();
 
-		CWinSock *createNodes(UINT uNum);
-		CWinSock *createNodesEx(UINT uNum, CAcceptSockMgr& acceptSockMgr);
+		CWinSock *initNodes(UINT uNum);
+		CWinSock *createNewNodes(UINT uNum, CAcceptSockMgr& acceptSockMgr);
 
 		CWinSock* getAcceptSock();
 

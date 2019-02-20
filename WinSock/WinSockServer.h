@@ -30,7 +30,6 @@ namespace NS_WinSock
 	{
 	public:
 		CWinSockServer()
-			: m_iocp(this)
 		{
 		}
 
@@ -76,6 +75,6 @@ namespace NS_WinSock
 		bool shutdown();
 
 	protected:
-		virtual void handleCPCallback(OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey) override;
+		void handleCPCallback(tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred);
 	};
 };

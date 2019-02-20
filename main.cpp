@@ -35,8 +35,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 {
 	auto fnClientSockOperate = [&](CWinSockClient& socClient, E_ClientSockOperate eOperate)
 	{
-		auto fnRecvCPCB = [](CWinSock& WinSock
-			, char *pData, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey) {
+		auto fnRecvCPCB = [](CWinSock& WinSock, char *pData, DWORD dwNumberOfBytesTransferred) {
 			if (NULL == pData || 0 == dwNumberOfBytesTransferred)
 			{
 				return false;
@@ -77,7 +76,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 					return false;
 				}
 
-				if (E_WinSockResult::WSR_OK != socClient.receiveEx(fnRecvCPCB))
+				if (E_WinSockResult::WSR_OK != socClient.asyncReceive(fnRecvCPCB))
 				{
 					return false;
 				}
@@ -172,6 +171,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 
 				for (UINT uIndex = 0; uIndex < ClientGroup.vecWinSockClient.size(); uIndex++)
 				{
+					::Sleep(3);
 					if (para.bRestartClient || para.bQuit)
 					{
 						break;
@@ -244,7 +244,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 		ClientGroup.thrTest.join();
 	}
 
-	CConsole::inst().printEx([](ostream& out) {
+	CConsole::inst().print([](ostream& out) {
 		out << "test stoped";
 	});
 }
@@ -259,14 +259,14 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 	tagClock clock("createServer");
 	if (!CWinSock::init(2, 2))
 	{
-		CConsole::inst().print("CWinSock::init fail");
+		CConsole::inst().printT("CWinSock::init fail");
 		return false;
 	}
 
 	CWinSockServer WinSockServer;
 	if (!WinSockServer.create(__ServerPort))
 	{
-		CConsole::inst().print("WinSockServer.init fail");
+		CConsole::inst().printT("WinSockServer.init fail");
 		return false;
 	}
 
@@ -280,7 +280,7 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 
 	if (!WinSockServer.iocpAccept(thread::hardware_concurrency(), uClientCount))
 	{
-		CConsole::inst().print("WinSockServer.iocpAccept fail");
+		CConsole::inst().printT("WinSockServer.iocpAccept fail");
 		return false;
 	}
 	clock.print();
@@ -295,7 +295,7 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 		list<pair<UINT, UINT>> lstSnapshot;
 		WinSockServer.getClientInfo(acceptSockSum, lstSnapshot);
 
-		CConsole::inst().printEx([&](ostream& out) {
+		CConsole::inst().print([&](ostream& out) {
 			out << "Active Client:" << acceptSockSum.uCurrConnCount
 				<< " Recycled:" << acceptSockSum.uRecycleCount
 				<< " History Connected:" << acceptSockSum.uHistoryConnSum
@@ -383,9 +383,9 @@ int main()
 	printf("input 'autoReconn' to test auto reconnect, 'restart' to restart all clients\n\
       'bc:xxx' to broadcast, 'exit' to quit\n\n");
 
-	UINT uFailNum = testWinSock(60000, 8);
+	UINT uFailNum = testWinSock(60, 3);
 	
-	CConsole::inst().printEx([uFailNum](ostream& out) {
+	CConsole::inst().print([uFailNum](ostream& out) {
 		out << "test finish, FailNum:" << uFailNum;
 	});
 	

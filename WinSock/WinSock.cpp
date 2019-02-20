@@ -17,7 +17,7 @@ namespace NS_WinSock
 			iErr = WSAGetLastError();
 		}
 
-		CConsole::inst().printEx([&](ostream& out) {
+		CConsole::inst().print([&](ostream& out) {
 			out << method.c_str() << " fail:" << iErr;
 		});
 	}
@@ -475,7 +475,7 @@ namespace NS_WinSock
 
 		if (HasOverlappedIoCompleted(m_pSendPerIO))
 		{
-			this->handleCPCallback(*m_pSendPerIO, (DWORD)m_pSendPerIO->InternalHigh, m_sock);
+			this->handleCPCallback(0, *m_pSendPerIO, (DWORD)m_pSendPerIO->InternalHigh);
 		}
 
 		m_bAyncSending = false;
@@ -510,7 +510,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 	
-	E_WinSockResult CWinSock::receiveEx(const CB_RecvCB& fnRecvCB, const CB_PeerShutdownedCB& fnPeerShutdownedCB, CIOCP *pIOCP)
+	E_WinSockResult CWinSock::asyncReceive(const CB_RecvCB& fnRecvCB, const CB_PeerShutdownedCB& fnPeerShutdownedCB, CIOCP *pIOCP)
 	{
 		if (!setNoBlock(true))
 		{
@@ -532,17 +532,14 @@ namespace NS_WinSock
 
 		if (NULL != pIOCP)
 		{
-			if (!pIOCP->bind(m_sock))
+			if (!pIOCP->bind(*this))
 			{
 				return E_WinSockResult::WSR_Error;
 			}
 		}
 		else
 		{
-			if (!CIOCP::poolBind(m_sock))
-			{
-				return E_WinSockResult::WSR_Error;
-			}
+			poolBind();
 		}
 
 		return _receiveEx();
@@ -570,7 +567,7 @@ namespace NS_WinSock
 
 		if (HasOverlappedIoCompleted(m_pRecvPerIO))
 		{
-			this->handleCPCallback(*m_pRecvPerIO, (DWORD)m_pRecvPerIO->InternalHigh, m_sock);
+			this->handleCPCallback(0, *m_pRecvPerIO, (DWORD)m_pRecvPerIO->InternalHigh);
 		}
 
 		return E_WinSockResult::WSR_OK;
@@ -592,49 +589,35 @@ namespace NS_WinSock
 		return true;
 	}
 	
-	void CWinSock::handleCPCallback(OVERLAPPED_ENTRY *lpOverlappedEntry, ULONG ulNumEntries)
+	void CWinSock::handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred)
 	{
-		if (NULL == lpOverlappedEntry)
+		if (STATUS_REMOTE_DISCONNECT == Internal || STATUS_REMOTE_DISCONNECT == perIOData.Internal)
+		{
+			_onPeerClosed();
+			return;
+		}
+
+		if (!checkNTStatus(Internal) || !checkNTStatus(perIOData.Internal))
 		{
 			return;
 		}
 
-		while (ulNumEntries)
-		{
-			if (NULL != lpOverlappedEntry->lpOverlapped)
-			{
-				OVERLAPPED& overLapped = *lpOverlappedEntry->lpOverlapped;
-				if (STATUS_REMOTE_DISCONNECT == lpOverlappedEntry->Internal || STATUS_REMOTE_DISCONNECT == overLapped.Internal)
-				{
-					_onPeerClosed();
-				}
-				else
-				{
-					if (checkNTStatus(lpOverlappedEntry->Internal) && checkNTStatus(overLapped.Internal))
-					{
-						handleCPCallback(overLapped, lpOverlappedEntry->dwNumberOfBytesTransferred, lpOverlappedEntry->lpCompletionKey);
-					}
-				}
-			}
-
-			lpOverlappedEntry++;
-			ulNumEntries--;
-		}
+		handleCPCallback(perIOData, dwNumberOfBytesTransferred);
 	}
 
-	void CWinSock::handleCPCallback(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
+	void CWinSock::handleCPCallback(tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred)
 	{
-		if (&overLapped == m_pRecvPerIO)
+		if (&perIOData == m_pRecvPerIO)
 		{
-			_handleRecvCB(overLapped, dwNumberOfBytesTransferred, lpCompletionKey);
+			_handleRecvCB(perIOData, dwNumberOfBytesTransferred);
 		}
-		else if (&overLapped == m_pSendPerIO)
+		else if (&perIOData == m_pSendPerIO)
 		{
 			_sendEx();
 		}
 	}
 
-	void CWinSock::_handleRecvCB(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
+	void CWinSock::_handleRecvCB(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred)
 	{
 		char *lpData = NULL;
 		CCharVector dataVector;
@@ -684,13 +667,13 @@ namespace NS_WinSock
 
 		if (m_fnRecvCB)
 		{
-			if (!m_fnRecvCB(*this, lpData, dwNumberOfBytesTransferred, lpCompletionKey))
+			if (!m_fnRecvCB(*this, lpData, dwNumberOfBytesTransferred))
 			{
 				return;
 			}
 		}
 
-		if (!onReceived(lpData, dwNumberOfBytesTransferred, lpCompletionKey))
+		if (!onReceived(lpData, dwNumberOfBytesTransferred))
 		{
 			return;
 		}
@@ -711,5 +694,26 @@ namespace NS_WinSock
 		}
 		
 		onPeerClosed();
+	}
+
+	void CWinSock::poolBind()
+	{
+		LPOVERLAPPED_COMPLETION_ROUTINE fnPoolCB = [](
+			DWORD dwErrorCode,
+			DWORD dwNumberOfBytesTransfered,
+			LPOVERLAPPED lpOverlapped) {
+
+			if (NULL == lpOverlapped)
+			{
+				CWinSock::printSockErr("fnPoolCB", ::GetLastError());
+				return;
+			}
+
+			tagPerIOData& perIOData = (tagPerIOData&)*lpOverlapped;
+			CWinSock& winSock = (CWinSock&)perIOData.iocpHandler;
+			winSock.handleCPCallback(dwErrorCode, perIOData, dwNumberOfBytesTransfered);
+		};
+
+		(void)::BindIoCompletionCallback((HANDLE)m_sock, fnPoolCB, 0);
 	}
 };

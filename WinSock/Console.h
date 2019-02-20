@@ -53,23 +53,23 @@ public:
 		}
 	}
 
-	template<typename T>
-	void print(T content)
-	{
-		m_mtx.lock();
-
-		cout << content << '\n';
-
-		m_mtx.unlock();
-	}
-
-	void printEx(const function<void(ostream& out)>& fnCB)
+	void print(const function<void(ostream& out)>& fnCB)
 	{
 		m_mtx.lock();
 
 		fnCB(cout);
 
 		cout << '\n';
+
+		m_mtx.unlock();
+	}
+
+	template<typename T>
+	void printT(T content)
+	{
+		m_mtx.lock();
+
+		cout << content << '\n';
 
 		m_mtx.unlock();
 	}
@@ -84,7 +84,7 @@ struct tagClock
 	tagClock(const string& t_strOperateName)
 		: strOperateName(t_strOperateName)
 	{
-		CConsole::inst().printEx([&](ostream& out) {
+		CConsole::inst().print([&](ostream& out) {
 			out << strOperateName << "...";
 		});
 
@@ -93,7 +93,7 @@ struct tagClock
 
 	void print(const string& strMsg = "")
 	{
-		CConsole::inst().printEx([&](ostream& out) {
+		CConsole::inst().print([&](ostream& out) {
 			clock_t ptrTime = time;
 			time = clock();
 			out << (!strMsg.empty() ? strMsg : strOperateName) << " ok, tickCount:" << time - ptrTime;

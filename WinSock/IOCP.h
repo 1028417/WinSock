@@ -24,40 +24,60 @@ namespace NS_WinSock
 	{
 	public:
 		ICPCallback() {}
-
-		virtual void handleCPCallback(OVERLAPPED_ENTRY *lpOverlappedEntry, ULONG ulNumEntries) = 0;
+		
+		virtual void handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred) = 0;
 	};
+
 
 	class CIOCP
 	{
 		friend void _iocpThread(LPVOID pPara);
-		friend bool CIOCP::bind(SOCKET sock, CIOCP *pIOCP);
 
 	public:
-		CIOCP(ICPCallback *pIOCPHandler = NULL)
-			: m_pIOCPHandler(pIOCPHandler)
+		CIOCP()
 		{
 		}
 
-	private:
-		ICPCallback *m_pIOCPHandler = NULL;
-
+	protected:
 		HANDLE m_hCompletionPort = INVALID_HANDLE_VALUE;
 
-		UINT m_uNumQuery = 0;
+	private:
+		ULONG m_uNumQuery = 1;
 
 		vector<HANDLE> m_vecThread;
 
 	private:
 		bool _queryIOCP();
 
-	public:
-		static bool poolBind(SOCKET sock);
+	protected:
+		virtual void handleCPCallback(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey);
 
-		bool create(UINT uThreadCount, UINT uNumQuery, SOCKET sock = INVALID_SOCKET);
+	public:
+		bool create(UINT uThreadCount, ULONG uNumQuery);
+
+		bool bind(class CWinSock& sock);
+
+		bool shutdown();
+	};
+
+	using CB_IOCP = function<void(SOCKET sock, ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred)>;
+
+	class CIOCPEx : public CIOCP
+	{
+	public:
+		CIOCPEx()
+		{
+		}
+
+	private:
+		CB_IOCP m_cb;
+
+	public:
+		bool create(UINT uThreadCount, ULONG uNumQuery, const CB_IOCP& cb);
 
 		bool bind(SOCKET sock);
 
-		bool shutdown();
+	private:
+		void handleCPCallback(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey) override;
 	};
 };

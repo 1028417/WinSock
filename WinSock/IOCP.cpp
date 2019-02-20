@@ -1,5 +1,4 @@
 
-
 #include <process.h>
 
 #include "IOCP.h"
@@ -12,22 +11,6 @@ using VEC_OVERLAPPED_ENTRY = vector<OVERLAPPED_ENTRY>;
 
 namespace NS_WinSock
 {
-	static void _processCallback(ICPCallback *pIOCPHandler, VEC_OVERLAPPED_ENTRY& vecOverlappedEntry)
-	{
-		if (NULL != pIOCPHandler)
-		{
-			pIOCPHandler->handleCPCallback(&vecOverlappedEntry.front(), (ULONG)vecOverlappedEntry.size());
-		}
-		else
-		{
-			for (auto& overLappedEntry : vecOverlappedEntry)
-			{
-				auto& perIOData = (tagPerIOData&)*overLappedEntry.lpOverlapped;
-				perIOData.iocpHandler.handleCPCallback(&overLappedEntry, 1);
-			}
-		}
-	}
-
 	static void _iocpThread(LPVOID pPara)
 	{
 		CIOCP *pIOCP = (CIOCP*)pPara;
@@ -45,35 +28,7 @@ namespace NS_WinSock
 		}
 	};
 
-	bool CIOCP::poolBind(SOCKET sock)
-	{
-		LPOVERLAPPED_COMPLETION_ROUTINE fnPoolCB = [](
-			DWORD dwErrorCode,
-			DWORD dwNumberOfBytesTransfered,
-			LPOVERLAPPED lpOverlapped) {
-
-			if (NULL == lpOverlapped)
-			{
-				CWinSock::printSockErr("fnPoolCB", ::GetLastError());
-				return;
-			}
-
-			OVERLAPPED_ENTRY overlappedEntry{ 0, lpOverlapped, dwErrorCode, dwNumberOfBytesTransfered };
-			VEC_OVERLAPPED_ENTRY vecOverlappedEntry(1, overlappedEntry);
-			_processCallback(NULL, vecOverlappedEntry);
-		};
-
-		(void)::BindIoCompletionCallback((HANDLE)sock, fnPoolCB, 0);
-		//if (!::BindIoCompletionCallback((HANDLE)sock, fnPoolCB, 0))
-		//{
-		//	CWinSock::printSockErr("BindIoCompletionCallback", GetLastError());
-		//	return false;
-		//}
-		
-		return true;
-	}
-
-	bool CIOCP::create(UINT uThreadCount, UINT uNumQuery, SOCKET sock)
+	bool CIOCP::create(UINT uThreadCount, ULONG uNumQuery)
 	{
 		m_hCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 		if (INVALID_HANDLE_VALUE == m_hCompletionPort)
@@ -81,26 +36,23 @@ namespace NS_WinSock
 			CWinSock::printSockErr("CreateIoCompletionPort", GetLastError());
 			return false;
 		}
-
-		if (INVALID_SOCKET != sock)
+		
+		m_uNumQuery = uNumQuery;
+		if (0 == m_uNumQuery)
 		{
-			if (!bind(sock))
-			{
-				return false;
-			}
+			m_uNumQuery = 1;
 		}
 
-		m_uNumQuery = uNumQuery;
 		do {
 			m_vecThread.push_back((HANDLE)::_beginthread(_iocpThread, 0, this));
 		} while (0 < uThreadCount && 0 < --uThreadCount);
 
 		return true;
 	}
-
-	bool CIOCP::bind(SOCKET sock)
+	
+	bool CIOCP::bind(CWinSock& sock)
 	{
-		HANDLE hRet = CreateIoCompletionPort((HANDLE)sock, m_hCompletionPort, sock, 0);
+		HANDLE hRet = CreateIoCompletionPort((HANDLE)sock.getSockHandle(), m_hCompletionPort, 0, 0);
 		if (hRet != m_hCompletionPort)
 		{
 			CWinSock::printSockErr("CreateIoCompletionPort", GetLastError());
@@ -109,90 +61,50 @@ namespace NS_WinSock
 
 		return true;
 	}
-
+	
 	bool CIOCP::_queryIOCP()
 	{
-		if (1 < m_uNumQuery)
+		vector<OVERLAPPED_ENTRY> vecOverlappedEntry(m_uNumQuery);
+		ULONG ulNumEntriesRemoved = 0;
+		if (!GetQueuedCompletionStatusEx(m_hCompletionPort, &vecOverlappedEntry.front()
+			, m_uNumQuery, &ulNumEntriesRemoved, INFINITE, FALSE))
 		{
-			vector<OVERLAPPED_ENTRY> vec(m_uNumQuery);
-			ULONG ulNumEntriesRemoved = 0;
-			if (!GetQueuedCompletionStatusEx(m_hCompletionPort, &vec.front()
-				, (ULONG)vec.size(), &ulNumEntriesRemoved, INFINITE, FALSE))
+			CWinSock::printSockErr("GetQueuedCompletionStatusEx", GetLastError());
+		}
+
+		bool bShutdown = false;
+		
+		for (UINT uIdx = 0; uIdx < ulNumEntriesRemoved && uIdx < vecOverlappedEntry.size(); uIdx++)
+		{
+			auto& overlappedEntry = vecOverlappedEntry[uIdx];
+
+			if (__IOCPShutdownSign == overlappedEntry.lpCompletionKey)
+			{
+				bShutdown = true;
+				continue;
+			}
+
+			if (NULL == overlappedEntry.lpOverlapped)
 			{
 				CWinSock::printSockErr("GetQueuedCompletionStatusEx", GetLastError());
+				continue;
 			}
 
-			bool bShutdown = false;
-			
-			VEC_OVERLAPPED_ENTRY vecOverlappedEntry;
-			for (auto& overlappedEntry : vec)
-			{
-				if (0 == ulNumEntriesRemoved)
-				{
-					break;
-				}
-				ulNumEntriesRemoved--;
-
-				if (__IOCPShutdownSign == overlappedEntry.lpCompletionKey)
-				{
-					bShutdown = true;
-					continue;
-				}
-
-				if (NULL == overlappedEntry.lpOverlapped)
-				{
-					CWinSock::printSockErr("GetQueuedCompletionStatusEx", GetLastError());
-					continue;
-				}
-
-				vecOverlappedEntry.push_back(overlappedEntry);
-			}
-
-			if (!vecOverlappedEntry.empty())
-			{
-				_processCallback(m_pIOCPHandler, vecOverlappedEntry);
-			}
-
-			if (bShutdown)
-			{
-				return false;
-			}
+			handleCPCallback(overlappedEntry.Internal, *overlappedEntry.lpOverlapped, overlappedEntry.dwNumberOfBytesTransferred, overlappedEntry.lpCompletionKey);
 		}
-		else
-		{
-			DWORD dwNumberOfBytesTransferred = 0;
-			ULONG_PTR lpCompletionKey = 0;
-			LPOVERLAPPED lpOverlapped = NULL;
-			if (GetQueuedCompletionStatus(m_hCompletionPort, &dwNumberOfBytesTransferred
-				, &lpCompletionKey, &lpOverlapped, INFINITE))
-			{
-				if (__IOCPShutdownSign == lpCompletionKey)
-				{
-					return false;
-				}
 
-				if (NULL != lpOverlapped)
-				{
-					OVERLAPPED_ENTRY overlappedEntry{ lpCompletionKey, lpOverlapped, 0, dwNumberOfBytesTransferred };
-					VEC_OVERLAPPED_ENTRY lstOverlappedEntry(1, overlappedEntry);
-					_processCallback(m_pIOCPHandler, lstOverlappedEntry);
-				}
-				else
-				{
-					CWinSock::printSockErr("GetQueuedCompletionStatus", GetLastError());
-				}
-			}
-			else
-			{
-				DWORD dwErr = GetLastError();
-				if (ERROR_OPERATION_ABORTED != dwErr)
-				{
-					CWinSock::printSockErr("GetQueuedCompletionStatus", dwErr);
-				}
-			}
+		if (bShutdown)
+		{
+			return false;
 		}
 
 		return true;
+	}
+
+	void CIOCP::handleCPCallback(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
+	{
+		auto& perIOData = (tagPerIOData&)overlapped;
+		perIOData.iocpHandler.handleCPCallback(Internal, perIOData, dwNumberOfBytesTransferred);
 	}
 
 	bool CIOCP::shutdown()
@@ -222,5 +134,39 @@ namespace NS_WinSock
 		}
 
 		return true;
+	}
+
+
+	bool CIOCPEx::create(UINT uThreadCount, ULONG uNumQuery, const CB_IOCP& cb)
+	{
+		m_cb = cb;
+
+		return __super::create(uThreadCount, uNumQuery);
+	}
+
+	bool CIOCPEx::bind(SOCKET sock)
+	{
+		HANDLE hRet = CreateIoCompletionPort((HANDLE)sock, m_hCompletionPort, sock, 0);
+		if (hRet != m_hCompletionPort)
+		{
+			CWinSock::printSockErr("CreateIoCompletionPort", GetLastError());
+			return false;
+		}
+
+		return true;
+	}
+
+	void CIOCPEx::handleCPCallback(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
+	{
+		if (m_cb)
+		{
+			SOCKET sock = (SOCKET)lpCompletionKey;
+
+			m_cb(sock, Internal, overlapped, dwNumberOfBytesTransferred);
+		}
+		else
+		{
+			__super::handleCPCallback(Internal, overlapped, dwNumberOfBytesTransferred, lpCompletionKey);
+		}
 	}
 };
