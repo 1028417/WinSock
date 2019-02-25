@@ -1,6 +1,8 @@
 
 #pragma once
 
+#pragma warning( disable: 4251 )
+
 #include <list>
 using std::list;
 
@@ -17,6 +19,12 @@ using namespace NS_mtutil;
 #include "IOCP.h"
 
 #define __ADDRLEN (sizeof(sockaddr_in)+16)
+
+#ifdef __WinSockPrj
+#define __WinSockExt __declspec(dllexport)
+#else
+#define __WinSockExt __declspec(dllimport)
+#endif
 
 namespace NS_WinSock
 {
@@ -175,7 +183,7 @@ namespace NS_WinSock
 		}
 	};
 
-	class CWinSock : public ICPCallback
+	class __WinSockExt CWinSock : public ICPCallback
 	{
 	public:
 		static LPFN_DISCONNECTEX CWinSock::s_lpfnDisconnectEx;

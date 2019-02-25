@@ -26,7 +26,7 @@ namespace NS_WinSock
 		}
 	};
 
-	class CWinSockServer : public CWinSock
+	class __WinSockExt CWinSockServer : public CWinSock
 	{
 	public:
 		CWinSockServer()

@@ -5,7 +5,7 @@
 
 namespace NS_WinSock
 {
-	class CWinSockClient : public CWinSock
+	class __WinSockExt CWinSockClient : public CWinSock
 	{
 	public:
 		CWinSockClient()

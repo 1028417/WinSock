@@ -692,8 +692,6 @@ namespace NS_WinSock
 
 	void CWinSock::onPeerClosed()
 	{
-		::Sleep(10);
-
 		(void)this->close();
 		
 		if (m_fnPeerShutdownedCB)
