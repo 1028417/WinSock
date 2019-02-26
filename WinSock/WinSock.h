@@ -254,6 +254,8 @@ namespace NS_WinSock
 
 		virtual void onPeerClosed();
 
+		void poolBind();
+
 	public:
 		bool create(bool bOverlapped, bool bNoBlock);
 
@@ -282,7 +284,5 @@ namespace NS_WinSock
 		bool disconnect();
 
 		bool close(bool bLinger = false, int lingerTime = 0);
-
-		void poolBind();
 	};
 };
