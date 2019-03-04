@@ -256,9 +256,9 @@ namespace NS_WinSock
 
 		void poolBind();
 
-	public:
-		bool create(bool bOverlapped, bool bNoBlock);
+		bool setOpt(int optname, const void *optval, int optlen);
 
+	public:
 		SOCKET getSockHandle()
 		{
 			return m_sock;
@@ -269,9 +269,11 @@ namespace NS_WinSock
 			return m_eStatus;
 		}
 
+		bool create(bool bOverlapped, bool bNoBlock);
+
 		bool setNoBlock(bool bVal);
 
-		bool setOpt(int optname, const void *optval, int optlen);
+		bool keepAlive(ULONG keepalivetime, ULONG keepaliveinterval);
 
 		E_WinSockResult send(char* lpData, ULONG uLen, DWORD *pdwSentLen=NULL);
 

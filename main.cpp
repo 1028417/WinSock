@@ -9,7 +9,7 @@
 using namespace NS_WinSock;
 
 #define __ServerIP "127.0.0.1"
-#define __ServerPort (IPPORT_RESERVED+10)
+#define __ServerPort (IPPORT_RESERVED+5)
 
 enum class E_ClientSockOperate
 {
@@ -383,8 +383,8 @@ int main()
 	printf("input 'autoReconn' to test auto reconnect, 'restart' to restart all clients\n\
       'bc:xxx' to broadcast, 'exit' to quit\n\n");
 
-	UINT uFailNum = testWinSock(60, 3);
-	
+	UINT uFailNum = testWinSock(500, 2);
+
 	CConsole::inst().print([uFailNum](ostream& out) {
 		out << "test finish, FailNum:" << uFailNum;
 	});

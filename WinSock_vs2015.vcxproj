@@ -22,7 +22,7 @@
     <ProjectGuid>{8F588D6C-8717-4957-831F-5797D18DDCC8}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>WinSockServer</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>WinSock</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

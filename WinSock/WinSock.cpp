@@ -3,6 +3,8 @@
 
 #include "Console.h"
 
+#include <mstcpip.h>
+
 #pragma comment(lib, "WS2_32.lib")
 #pragma comment(lib, "MsWSock.lib")
 
@@ -135,6 +137,33 @@ namespace NS_WinSock
 			}
 
 			m_bNoBlock = bVal;
+		}
+
+		return true;
+	}
+	
+	bool CWinSock::keepAlive(ULONG keepalivetime, ULONG keepaliveinterval)
+	{
+		int keepalive = 1; // 开启keepalive属性
+		if (!setOpt(SO_KEEPALIVE, &keepalive, sizeof(keepalive)))
+		{
+			return false;
+		}
+
+		tcp_keepalive alive_in = { 0 };
+		alive_in.onoff = TRUE;
+		alive_in.keepalivetime = keepalivetime;                // 开始首次KeepAlive探测前的TCP空闭时间
+		alive_in.keepaliveinterval = keepaliveinterval;                // 两次KeepAlive探测间的时间间隔
+
+		tcp_keepalive alive_out = { 0 };
+		unsigned long ulBytesReturn = 0;
+
+		int iRet = WSAIoctl(m_sock, SIO_KEEPALIVE_VALS, &alive_in, sizeof(alive_in),
+			&alive_out, sizeof(alive_out), &ulBytesReturn, NULL, NULL);
+		if (SOCKET_ERROR == iRet)
+		{
+			printSockErr("keepAlive");
+			return false;
 		}
 
 		return true;
