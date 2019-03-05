@@ -1,18 +1,25 @@
 
 #include "AcceptSockNode.h"
 
+#include "WinSockServer.h"
+
 namespace NS_WinSock
 {
+	static CWinSock* newAcceptSock()
+	{
+		return new CWinSock;
+	}
+
 	tagAcceptSockNode* tagAcceptSockNode::newNode()
 	{
-		CWinSock *pWinSock = new CWinSock;
-		if (!pWinSock->create(true, false))
+		CWinSock *pAcceptSock = newAcceptSock();
+		if (E_WinSockResult::WSR_OK != pAcceptSock->create(true))
 		{
-			delete pWinSock;
+			delete pAcceptSock;
 			return NULL;
 		}
 
-		return new tagAcceptSockNode(pWinSock);
+		return new tagAcceptSockNode(pAcceptSock);
 	}
 
 	tagAcceptSockNode* tagAcceptSockNode::addNextNode()
@@ -177,7 +184,7 @@ namespace NS_WinSock
 		while (uNum--)
 		{
 			pAcceptSock = new CWinSock;
-			if (!pAcceptSock->create(true, false))
+			if (E_WinSockResult::WSR_OK != pAcceptSock->create(true))
 			{
 				delete pAcceptSock;
 				break;

@@ -11,7 +11,7 @@ using VEC_OVERLAPPED_ENTRY = vector<OVERLAPPED_ENTRY>;
 
 namespace NS_WinSock
 {
-	static void _iocpThread(LPVOID pPara)
+	void CIOCP::_iocpThread(LPVOID pPara)
 	{
 		CIOCP *pIOCP = (CIOCP*)pPara;
 		if (NULL == pIOCP)
@@ -52,7 +52,7 @@ namespace NS_WinSock
 	
 	bool CIOCP::bind(CWinSock& sock)
 	{
-		HANDLE hRet = CreateIoCompletionPort((HANDLE)sock.getSockHandle(), m_hCompletionPort, 0, 0);
+		HANDLE hRet = CreateIoCompletionPort((HANDLE)sock.getHandle(), m_hCompletionPort, 0, 0);
 		if (hRet != m_hCompletionPort)
 		{
 			CWinSock::printSockErr("CreateIoCompletionPort", GetLastError());
@@ -135,29 +135,4 @@ namespace NS_WinSock
 
 		return true;
 	}
-
-
-	//bool CIOCPEx::create(UINT uThreadCount, ULONG uNumQuery, const CB_IOCP& cb)
-	//{
-	//	m_cb = cb;
-
-	//	return __super::create(uThreadCount, uNumQuery);
-	//}
-
-	//bool CIOCPEx::bind(SOCKET sock, void *lpCompletionKey)
-	//{
-	//	HANDLE hRet = CreateIoCompletionPort((HANDLE)sock, m_hCompletionPort, (ULONG_PTR)lpCompletionKey, 0);
-	//	if (hRet != m_hCompletionPort)
-	//	{
-	//		CWinSock::printSockErr("CreateIoCompletionPort", GetLastError());
-	//		return false;
-	//	}
-
-	//	return true;
-	//}
-
-	//void CIOCPEx::handleCPCallback(ULONG_PTR Internal, OVERLAPPED& overlapped, DWORD dwNumberOfBytesTransferred, ULONG_PTR lpCompletionKey)
-	//{
-	//	m_cb(Internal, overlapped, dwNumberOfBytesTransferred, (void*)lpCompletionKey);
-	//}
 };

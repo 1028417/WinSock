@@ -25,7 +25,7 @@ private:
 
 public:
 	template <unsigned int _scanfSize = 256>
-	void waitInput(bool bBlock, const function<bool(const string& strInput)>& fnCB)
+	void waitInput(bool bBlock, const function<bool(const string& strInput)>& cb)
 	{
 		auto fnLoop = [&] {
 			char lpInput[_scanfSize + 1]{ 0 };
@@ -34,7 +34,7 @@ public:
 			{
 				if (1 == scanf_s("%s", lpInput, _scanfSize))
 				{
-					if (!fnCB(lpInput))
+					if (!cb(lpInput))
 					{
 						break;
 					}
@@ -53,11 +53,11 @@ public:
 		}
 	}
 
-	void print(const function<void(ostream& out)>& fnCB)
+	void print(const function<void(ostream& out)>& cb)
 	{
 		m_mtx.lock();
 
-		fnCB(cout);
+		cb(cout);
 
 		cout << '\n';
 

@@ -13,7 +13,7 @@ namespace NS_WinSock
 		addrServer.sin_port = htons(uServerPort);
 		(void)inet_pton(AF_INET, pszServerAddr, (void*)&addrServer.sin_addr.S_un.S_addr);
 
-		auto eRet = __super::connect(addrServer);
+		auto eRet = _connect(addrServer);
 		if (E_WinSockResult::WSR_OK == eRet)
 		{
 			m_eStatus = E_SockConnStatus::SCS_Connected;
@@ -29,6 +29,25 @@ namespace NS_WinSock
 		}
 
 		return eRet;
+	}
+
+	E_WinSockResult CWinSockClient::_connect(const sockaddr_in& addr)
+	{
+		//int iRet = ::connect(m_sock, (sockaddr*)&addr, sizeof addr);
+		int iRet = WSAConnect(m_sock, (sockaddr*)&addr, sizeof addr, NULL, NULL, NULL, NULL);
+		if (SOCKET_ERROR == iRet)
+		{
+			int iErr = WSAGetLastError();
+			if (WSAEWOULDBLOCK == iErr)
+			{
+				return E_WinSockResult::WSR_EWOULDBLOCK;
+			}
+
+			printSockErr("connect", iErr);
+			return E_WinSockResult::WSR_Error;
+		}
+
+		return E_WinSockResult::WSR_OK;
 	}
 
 	E_WinSockResult CWinSockClient::checkConnected(DWORD dwTimeout)

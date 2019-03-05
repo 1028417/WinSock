@@ -106,9 +106,9 @@ namespace NS_WinSock
 	};
 
 	class CWinSock;
-	using CB_RecvCB = function<bool(CWinSock& WinSock, char *pData, DWORD dwNumberOfBytesTransferred)>;
+	using CB_Recv = function<bool(CWinSock&, char *pData, DWORD dwNumberOfBytesTransferred)>;
 
-	using CB_PeerShutdownedCB = function<void(CWinSock& WinSock)>;
+	using CB_PeerShutdown = function<void(CWinSock&)>;
 
 	using VEC_SendData = vector<char>;
 
@@ -186,80 +186,76 @@ namespace NS_WinSock
 	class __WinSockExt CWinSock : public ICPCallback
 	{
 	public:
-		static LPFN_DISCONNECTEX CWinSock::s_lpfnDisconnectEx;
-
 		static void printSockErr(const string& method, int iErr = -1);
 
+		static bool checkNTStatus(ULONG_PTR Internal);
+
 		static bool init(WORD wVersion, WORD wHighVersion);
-		static SOCKET createSock(bool bOverlapped);
+
 		static bool select(tagSocketSet& sockSet, UINT& uResult, DWORD dwTimeout = 0);
 
+	public:
 		CWinSock()
 		{
 		}
 
-		CWinSock(SOCKET sock, E_SockConnStatus eStatus = E_SockConnStatus::SCS_None)
+		CWinSock(SOCKET sock, bool bConnected)
 		{
 			m_sock = sock;
-			m_eStatus = eStatus;
+			m_eStatus = bConnected ? E_SockConnStatus::SCS_Connected : E_SockConnStatus::SCS_None;
+		}
+
+		CWinSock(SOCKET sock, E_SockConnStatus eConnStatus)
+		{
+			m_sock = sock;
+			m_eStatus = eConnStatus;
 		}
 
 	protected:
 		SOCKET m_sock = INVALID_SOCKET;
 
+		E_SockConnStatus m_eStatus = E_SockConnStatus::SCS_None;
+
+	private:
 		bool m_bNoBlock = false;
 
 		tagRecvPerIOData *m_pRecvPerIO = NULL;
 		tagSendPerIOData *m_pSendPerIO = NULL;
 
-		E_SockConnStatus m_eStatus = E_SockConnStatus::SCS_None;
+		CB_Recv m_cbRecv;
 
-		CB_RecvCB m_fnRecvCB;
-
-		CB_PeerShutdownedCB m_fnPeerShutdownedCB;
+		CB_PeerShutdown m_cbPeerShutdown;
 
 		volatile bool m_bAyncSending = false;
 		
 		tagSendData m_sendData;
 
 	private:
-		E_WinSockResult _sendEx();
-
 		E_WinSockResult _asyncReceive();
+
+		E_WinSockResult _asyncSend();
 
 		void _handleRecvCB(OVERLAPPED& overLapped, DWORD dwNumberOfBytesTransferred);
 		
-		void handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred) override;
-
-		virtual void handleCPCallback(tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred);
+		virtual void handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred) override;
 
 	protected:
 		void* GetExtensionFunction(GUID guid);
 
-		bool listen(UINT uPort, int backlog = SOMAXCONN);
-
-		int accept(SOCKET& socClient, sockaddr_in& addrClient);
-
-		E_WinSockResult connect(const sockaddr_in& addr);
-
 		E_WinSockResult waitEvent(WSAEVENT hSockEvent, long& lEvent, map<UINT, int>& mapEventErr, DWORD dwTimeout = 0);
-
-	protected:
-		virtual bool acceptCB()
-		{
-			return true;
-		}
 
 		virtual bool onReceived(char *lpData, DWORD dwNumberOfBytesTransferred);
 
 		virtual void onPeerClosed();
-
-		void poolBind();
-
+		
 		bool setOpt(int optname, const void *optval, int optlen);
 
+		bool setNoBlock(bool bVal);
+
+		bool cancelIO(LPOVERLAPPED lpOverlapped = NULL);
+
 	public:
-		SOCKET getSockHandle()
+		SOCKET getHandle()
 		{
 			return m_sock;
 		}
@@ -269,9 +265,11 @@ namespace NS_WinSock
 			return m_eStatus;
 		}
 
-		bool create(bool bOverlapped, bool bNoBlock);
+		E_WinSockResult create(bool bOverlapped);
 
-		bool setNoBlock(bool bVal);
+		E_WinSockResult createNoBlock(bool bOverlapped);
+
+		E_WinSockResult createAsync(CIOCP *pIOCP = NULL);
 
 		bool keepAlive(ULONG keepalivetime, ULONG keepaliveinterval);
 
@@ -279,9 +277,11 @@ namespace NS_WinSock
 
 		E_WinSockResult receive(char* lpBuff, ULONG uBuffSize, DWORD& uRecvLen);
 
-		E_WinSockResult asyncReceive(const CB_RecvCB& fnRecvCB=NULL, const CB_PeerShutdownedCB& fnPeerShutdownedCB=NULL, CIOCP *pIOCP=NULL);
+		E_WinSockResult initAsync(CIOCP *pIOCP=NULL);
 
-		bool cancelIO(LPOVERLAPPED lpOverlapped = NULL);
+		E_WinSockResult asyncReceive(const CB_Recv& fnRecvCB, const CB_PeerShutdown& fnPeerShutdownedCB=NULL);
+
+		E_WinSockResult asyncSend(char* lpData, ULONG uLen);
 
 		bool disconnect();
 

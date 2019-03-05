@@ -5,97 +5,95 @@ namespace NS_WinSock
 {
 	static const UINT __AcceptDeliverCoefficient = 8;
 
-	bool CWinSockServer::create(UINT uPort)
+	E_WinSockResult CWinSockServer::create()
 	{
-		if (!__super::create(true, false))
+		E_WinSockResult eRet = __super::create(true);
+		if (E_WinSockResult::WSR_OK != eRet)
 		{
-			return false;
+			return eRet;
 		}
 
 		m_lpfnAcceptEx = (LPFN_ACCEPTEX)GetExtensionFunction(WSAID_ACCEPTEX);
 		if (NULL == m_lpfnAcceptEx)
 		{
-			return false;
+			return E_WinSockResult::WSR_Error;
 		}
 
 		int optval = 1;
 		if (!setOpt(SO_REUSEADDR, &optval, sizeof optval))
 		{
-			return false;
+			return E_WinSockResult::WSR_Error;
 		}
 
-		if (!listen(uPort))
-		{
-			return false;
-		}
-
-		auto fnOnAccepted = [](CAcceptSockMgr& AcceptSockMgr, CWinSock& WinSock) {
-			//GetAcceptExSockaddrs(
-			//if (!WinSock.setOpt(SO_UPDATE_ACCEPT_CONTEXT, &m_sock, sizeof SOCKET))
-			//{
-			//	return false;
-			//}
-
-			CB_RecvCB fnRecvCB = [&](CWinSock& WinSock, char *pData, DWORD dwNumberOfBytesTransferred) {
-				AcceptSockMgr.addMsg(pData, dwNumberOfBytesTransferred);
-				return true;
-			};
-			CB_PeerShutdownedCB fnPeerShutdownedCB = [&](CWinSock& WinSock) {
-				AcceptSockMgr.newRecycle(&WinSock);
-			};
-			
-			if (E_WinSockResult::WSR_OK != WinSock.asyncReceive(fnRecvCB, fnPeerShutdownedCB))
-			{
-				return false;
-			}
-
-			return true;
-		};
-
-		auto fnShuntdown = [](CAcceptSockMgr& AcceptSockMgr, CWinSock& WinSock) {
-			if (!WinSock.disconnect())
-			{
-				WinSock.close();
-				return false;
-			}
-
-			return true;
-		};
-
-		m_AcceptSockMgr.init(fnOnAccepted, fnShuntdown);
-
-		return true;
+		return E_WinSockResult::WSR_OK;
 	}
 
-	void CWinSockServer::accept(UINT uThreadCount)
+	E_WinSockResult CWinSockServer::listen(UINT uPort, int backlog)
 	{
-		do {
-			thread thrAccept([&] {
-				SOCKET socClient = INVALID_SOCKET;
+		sockaddr_in addr;
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(uPort);
+		addr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+		//inet_pton(AF_INET, "127.0.0.1", (void*)&addr.sin_addr);
+		int iRet = ::bind(m_sock, (sockaddr*)&addr, sizeof addr);
+		if (SOCKET_ERROR == iRet)
+		{
+			printSockErr("bind");
+			return E_WinSockResult::WSR_Error;
+		}
 
-				sockaddr_in addrClient;
-				memset(&addrClient, 0, sizeof(addrClient));
+		iRet = ::listen(m_sock, backlog);
+		if (SOCKET_ERROR == iRet)
+		{
+			printSockErr("listen");
+			return E_WinSockResult::WSR_Error;
+		}
+		
+		return E_WinSockResult::WSR_OK;
+	}
 
-				//char pszAddr[16] = {0};
-				while (true)
-				{
-					int iRet = CWinSock::accept(socClient, addrClient);
-					if (WSAEINTR == iRet)
-					{
-						break;
-					}
+	E_WinSockResult CWinSockServer::accept(SOCKET& socClient, sockaddr_in& addrClient)
+	{
+		socClient = INVALID_SOCKET;
 
-					if (INVALID_SOCKET == socClient)
-					{
-						continue;
-					}
+		int addrlen = sizeof addrClient;
+		//SOCKET socClient = ::accept(m_sock, (sockaddr*)&addrClient, &addrlen);
+		socClient = WSAAccept(m_sock, (sockaddr*)&addrClient, &addrlen, [](
+			IN LPWSABUF lpCallerId,
+			IN LPWSABUF lpCallerData,
+			IN OUT LPQOS lpSQOS,
+			IN OUT LPQOS lpGQOS,
+			IN LPWSABUF lpCalleeId,
+			IN LPWSABUF lpCalleeData,
+			OUT GROUP FAR * g,
+			IN DWORD_PTR dwCallbackData)
+		{
+			//CWinSock *pWinSock = (CWinSock*)dwCallbackData;
+			//if (NULL != pWinSock)
+			//{
+			//	if (!pWinSock->acceptCB())
+			//	{
+			//		return CF_REJECT;
+			//	}
+			//}
 
-					//inet_ntop(addrClient.sin_family, &addrClient.sin_addr, pszAddr, sizeof(pszAddr));
-					m_AcceptSockMgr.newAccept(new CWinSock(socClient));
-				}
-			});
-			thrAccept.detach();
-		} while (0 < uThreadCount && 0 < --uThreadCount);
+			return CF_ACCEPT;
+		}, (DWORD_PTR)this);
+
+		if (INVALID_SOCKET == socClient)
+		{
+			int iErr = WSAGetLastError();
+			if (WSAEWOULDBLOCK != iErr && WSATRY_AGAIN != iErr)
+			{
+				printSockErr("accept", iErr);
+			}
+
+			return E_WinSockResult::WSR_Error;
+		}
+
+		//inet_ntop(addrClient.sin_family, &addrClient.sin_addr, pszAddr, sizeof(pszAddr));
+
+		return E_WinSockResult::WSR_OK;
 	}
 
 	E_WinSockResult CWinSockServer::_acceptEx(SOCKET socAccept, tagAcceptPerIOData& perIOData)
@@ -114,7 +112,7 @@ namespace NS_WinSock
 
 		if (HasOverlappedIoCompleted(&perIOData))
 		{
-			this->handleCPCallback(perIOData, (DWORD)perIOData.InternalHigh);
+			this->handleCPCallback(0, perIOData, (DWORD)perIOData.InternalHigh);
 		}
 
 		return E_WinSockResult::WSR_OK;
@@ -131,7 +129,7 @@ namespace NS_WinSock
 				return false;
 			}
 
-			if (E_WinSockResult::WSR_OK != _acceptEx(pAcceptSock->getSockHandle(), perIOData))
+			if (E_WinSockResult::WSR_OK != _acceptEx(pAcceptSock->getHandle(), perIOData))
 			{
 				return false;
 			}
@@ -140,36 +138,34 @@ namespace NS_WinSock
 		});
 	}
 
-	bool CWinSockServer::poolAccept(UINT uClientCount)
+	E_WinSockResult CWinSockServer::asyncAccept(UINT uClientCount, const CB_Accept& cbAccept
+		, const CB_Recv& cbRecv, const CB_PeerShutdown& cbPeerShutdown, UINT uIOCPThreadCount)
 	{
+		CIOCP *pIOCP = NULL;
+		if (0 != uIOCPThreadCount)
+		{
+			if (!m_iocp.create(uIOCPThreadCount, __AcceptDeliverCoefficient))
+			{
+				return E_WinSockResult::WSR_Error;
+			}
+
+			pIOCP = &m_iocp;
+		}
+
+		E_WinSockResult eRet = initAsync(pIOCP);
+		if (E_WinSockResult::WSR_OK != eRet)
+		{
+			return eRet;
+		}
+
 		if (!_acceptEx(uClientCount))
 		{
-			return false;
+			return E_WinSockResult::WSR_Error;
 		}
 
-		poolBind();
+		m_AcceptSockMgr.init(cbAccept, cbRecv, cbPeerShutdown);
 
-		return true;
-	}
-
-	bool CWinSockServer::iocpAccept(UINT uIOCPThreadCount, UINT uClientCount)
-	{
-		if (!_acceptEx(uClientCount))
-		{
-			return false;
-		}
-
-		if (!m_iocp.create(uIOCPThreadCount, __AcceptDeliverCoefficient))
-		{
-			return false;
-		}
-		
-		if (!m_iocp.bind(*this))
-		{
-			return false;
-		}
-
-		return true;
+		return E_WinSockResult::WSR_OK;
 	}
 
 	UINT CWinSockServer::broadcast(const string& strData)
@@ -178,7 +174,7 @@ namespace NS_WinSock
 
 		m_AcceptSockMgr.enumerate([&](CWinSock& sock) {
 			DWORD uLen = (DWORD)strData.size();
-			if (E_WinSockResult::WSR_OK == sock.send((char*)strData.c_str(), uLen))
+			if (E_WinSockResult::WSR_OK == sock.asyncSend((char*)strData.c_str(), uLen))
 			{
 				uCount++;
 			}
@@ -206,8 +202,13 @@ namespace NS_WinSock
 		return true;
 	}
 
-	void CWinSockServer::handleCPCallback(tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred)
+	void CWinSockServer::handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred)
 	{
+		if (!checkNTStatus(Internal) || !checkNTStatus(perIOData.Internal))
+		{
+			return;
+		}
+
 		auto& AcceptPerIOData = (tagAcceptPerIOData&)perIOData;
 		CWinSock *pCurrAccept = AcceptPerIOData.getAcceptSock();
 		if (NULL == pCurrAccept)
@@ -215,7 +216,7 @@ namespace NS_WinSock
 			return;
 		}
 
-		m_AcceptSockMgr.newAccept(pCurrAccept);
+		m_AcceptSockMgr.accept(pCurrAccept);
 
 		CWinSock *pNewAccept = AcceptPerIOData.forward(m_AcceptSockMgr);
 		if (NULL == pNewAccept)
@@ -223,7 +224,7 @@ namespace NS_WinSock
 			return;
 		}
 
-		if (E_WinSockResult::WSR_OK != _acceptEx(pNewAccept->getSockHandle(), AcceptPerIOData))
+		if (E_WinSockResult::WSR_OK != _acceptEx(pNewAccept->getHandle(), AcceptPerIOData))
 		{
 			return;
 		}

@@ -57,7 +57,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 			switch (eOperate)
 			{
 			case E_ClientSockOperate::CSO_Create:
-				if (!socClient.create(true, true))
+				if (E_WinSockResult::WSR_OK != socClient.createAsync())
 				{
 					return false;
 				}
@@ -85,7 +85,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 			case E_ClientSockOperate::CSO_Send:
 			{
 				char lpData[600]{ 'a' };
-				socClient.send(lpData, sizeof lpData);
+				socClient.asyncSend(lpData, sizeof lpData);
 
 				break;
 			}
@@ -249,6 +249,46 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 	});
 }
 
+static CWinSockServer g_WinSockServer;
+
+static UINT g_uHistoryMsgSum = 0;
+
+static bool startServer(UINT uClientCount)
+{
+	tagClock clock("createServer");
+	if (E_WinSockResult::WSR_OK != g_WinSockServer.create())
+	{
+		CConsole::inst().printT("WinSockServer.create fail");
+		return false;
+	}
+
+	if (E_WinSockResult::WSR_OK != g_WinSockServer.listen(__ServerPort))
+	{
+		CConsole::inst().printT("WinSockServer.listen fail");
+		return false;
+	}
+
+	//if (!g_WinSockServer.asyncAccept(uClientCount))
+	//{
+	//	CConsole::inst().print("WinSockServer.poolAccept fail");
+	//	return false;
+	//}
+
+	auto fnRecvCB = [](CWinSock& WinSock, char *pData, DWORD dwNumberOfBytesTransferred) {
+		g_uHistoryMsgSum++;
+		return true;
+	};
+
+	if (E_WinSockResult::WSR_OK != g_WinSockServer.asyncAccept(uClientCount, NULL, fnRecvCB, NULL, thread::hardware_concurrency()))
+	{
+		CConsole::inst().printT("WinSockServer.iocpAccept fail");
+		return false;
+	}
+	clock.print();
+
+	return true;
+}
+
 static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 {
 	if (uGroupCount > uClientCount)
@@ -256,34 +296,16 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 		uGroupCount = uClientCount;
 	}
 
-	tagClock clock("createServer");
 	if (!CWinSock::init(2, 2))
 	{
 		CConsole::inst().printT("CWinSock::init fail");
 		return false;
 	}
 
-	CWinSockServer WinSockServer;
-	if (!WinSockServer.create(__ServerPort))
+	if (!startServer(uClientCount))
 	{
-		CConsole::inst().printT("WinSockServer.init fail");
 		return false;
 	}
-
-	//WinSockServer.accept(3);
-
-	//if (!WinSockServer.poolAccept(1000))
-	//{
-	//	CConsole::inst().print("WinSockServer.poolAccept fail");
-	//	return false;
-	//}
-
-	if (!WinSockServer.iocpAccept(thread::hardware_concurrency(), uClientCount))
-	{
-		CConsole::inst().printT("WinSockServer.iocpAccept fail");
-		return false;
-	}
-	clock.print();
 
 	tagTestPara para;
 	thread thrClient([&] {
@@ -293,14 +315,14 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 	auto fnPrintServerInfo = [&] {
 		tagAcceptSockSum acceptSockSum;
 		list<pair<UINT, UINT>> lstSnapshot;
-		WinSockServer.getClientInfo(acceptSockSum, lstSnapshot);
+		g_WinSockServer.getClientInfo(acceptSockSum, lstSnapshot);
 
 		CConsole::inst().print([&](ostream& out) {
 			out << "Active Client:" << acceptSockSum.uCurrConnCount
 				<< " Recycled:" << acceptSockSum.uRecycleCount
 				<< " History Connected:" << acceptSockSum.uHistoryConnSum
 				<< " History Recycled:" << acceptSockSum.uHistoryRecycleSum
-				<< " Total Message:" << acceptSockSum.uHistoryMsgSum;
+				<< " Total Message:" << g_uHistoryMsgSum;
 
 			UINT uAcceptSum = 0;
 			UINT uFreeSum = 0;
@@ -358,7 +380,7 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 			if (1 == sscanf_s(strInput.c_str(), "bc:%9s", lpBC, (UINT)sizeof(lpBC)))
 			{
 				tagClock clock("broadcast");
-				UINT uRet = WinSockServer.broadcast(lpBC);
+				UINT uRet = g_WinSockServer.broadcast(lpBC);
 				clock.print("broadcasted: " + to_string(uRet));
 			}
 		}
@@ -370,7 +392,7 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 	
 	thrClient.join();
 
-	if (!WinSockServer.shutdown())
+	if (!g_WinSockServer.shutdown())
 	{
 		return false;
 	}
@@ -383,7 +405,7 @@ int main()
 	printf("input 'autoReconn' to test auto reconnect, 'restart' to restart all clients\n\
       'bc:xxx' to broadcast, 'exit' to quit\n\n");
 
-	UINT uFailNum = testWinSock(500, 2);
+	UINT uFailNum = testWinSock(60000, 8);
 
 	CConsole::inst().print([uFailNum](ostream& out) {
 		out << "test finish, FailNum:" << uFailNum;

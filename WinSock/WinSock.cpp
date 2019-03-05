@@ -10,8 +10,6 @@
 
 namespace NS_WinSock
 {
-	LPFN_DISCONNECTEX CWinSock::s_lpfnDisconnectEx = NULL;
-
 	void CWinSock::printSockErr(const string& method, int iErr)
 	{
 		if (-1 == iErr)
@@ -22,6 +20,22 @@ namespace NS_WinSock
 		CConsole::inst().print([&](ostream& out) {
 			out << method.c_str() << " fail:" << iErr;
 		});
+	}
+
+	bool CWinSock::checkNTStatus(ULONG_PTR Internal)
+	{
+		if (STATUS_SUCCESS != Internal)
+		{
+			if (STATUS_CANCELLED != Internal && STATUS_CONNECTION_ABORTED != Internal
+				&& STATUS_CONNECTION_RESET != Internal && STATUS_REMOTE_DISCONNECT != Internal && STATUS_PENDING != Internal)
+			{
+				CWinSock::printSockErr("checkNTStatus", (int)Internal);
+			}
+
+			return false;
+		}
+
+		return true;
 	}
 
 	bool CWinSock::init(WORD wVersion, WORD wHighVersion)
@@ -38,31 +52,6 @@ namespace NS_WinSock
 	}
 
 	//(void)WSACleanup(); 
-
-	SOCKET CWinSock::createSock(bool bOverlapped)
-	{
-		DWORD dwFlags = 0;
-		if (bOverlapped)
-		{
-			dwFlags = WSA_FLAG_OVERLAPPED;
-		}
-		SOCKET sock = WSASocketW(AF_INET, SOCK_STREAM, 0, NULL, 0, dwFlags);
-		if (INVALID_SOCKET == sock)
-		{
-			printSockErr("WSASocket");
-			return INVALID_SOCKET;
-		}
-
-		if (bOverlapped)
-		{
-			if (!SetFileCompletionNotificationModes((HANDLE)sock, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS))
-			{
-				printSockErr("SetFileCompletionNotificationModes", GetLastError());
-			}
-		}
-
-		return sock;
-	}
 
 	struct tagTimeval : timeval
 	{
@@ -95,24 +84,59 @@ namespace NS_WinSock
 		return true;
 	}
 
-	bool CWinSock::create(bool bOverlapped, bool bNoBlock)
+	E_WinSockResult CWinSock::create(bool bOverlapped)
 	{
-		m_sock = createSock(bOverlapped);
+		DWORD dwFlags = 0;
+		if (bOverlapped)
+		{
+			dwFlags = WSA_FLAG_OVERLAPPED;
+		}
+		m_sock = WSASocketW(AF_INET, SOCK_STREAM, 0, NULL, 0, dwFlags);
 		if (INVALID_SOCKET == m_sock)
 		{
-			return false;
+			printSockErr("WSASocket");
+			return E_WinSockResult::WSR_Error;
 		}
 
-		if (bNoBlock)
+		if (bOverlapped)
 		{
-			(void)setNoBlock(bNoBlock);
+			if (!SetFileCompletionNotificationModes((HANDLE)m_sock, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS))
+			{
+				printSockErr("SetFileCompletionNotificationModes", GetLastError());
+				return E_WinSockResult::WSR_Error;
+			}
 		}
 
-		m_eStatus = E_SockConnStatus::SCS_None;
-
-		return true;
+		return E_WinSockResult::WSR_OK;
 	}
-	
+
+	E_WinSockResult CWinSock::createNoBlock(bool bOverlapped)
+	{
+		E_WinSockResult eRet = create(bOverlapped);
+		if (E_WinSockResult::WSR_OK != eRet)
+		{
+			return eRet;
+		}
+
+		if (!setNoBlock(true))
+		{
+			return E_WinSockResult::WSR_Error;
+		}
+
+		return E_WinSockResult::WSR_OK;
+	}
+
+	E_WinSockResult CWinSock::createAsync(CIOCP *pIOCP)
+	{
+		E_WinSockResult eRet = createNoBlock(true);
+		if (E_WinSockResult::WSR_OK != eRet)
+		{
+			return eRet;
+		}
+
+		return initAsync(pIOCP);
+	}
+
 	bool CWinSock::setOpt(int optname, const void *optval, int optlen)
 	{
 		int iRet = setsockopt(m_sock, SOL_SOCKET, optname, (const char*)optval, optlen);
@@ -185,91 +209,6 @@ namespace NS_WinSock
 		return pRet;
 	}
 
-	bool CWinSock::listen(UINT uPort, int backlog)
-	{
-		sockaddr_in addr;
-		addr.sin_family = AF_INET;
-		addr.sin_port = htons(uPort);
-		addr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
-		//inet_pton(AF_INET, "127.0.0.1", (void*)&addr.sin_addr);
-		int iRet = ::bind(m_sock, (sockaddr*)&addr, sizeof addr);
-		if (SOCKET_ERROR == iRet)
-		{
-			printSockErr("bind");
-			return false;
-		}
-
-		iRet = ::listen(m_sock, backlog);
-		if (SOCKET_ERROR == iRet)
-		{
-			printSockErr("listen");
-			return false;
-		}
-
-		return true;
-	}
-
-	int CWinSock::accept(SOCKET& socClient, sockaddr_in& addrClient)
-	{
-		socClient = INVALID_SOCKET;
-
-		int addrlen = sizeof addrClient;
-		//SOCKET socClient = ::accept(m_sock, (sockaddr*)&addrClient, &addrlen);
-		socClient = WSAAccept(m_sock, (sockaddr*)&addrClient, &addrlen, [](
-			IN LPWSABUF lpCallerId,
-			IN LPWSABUF lpCallerData,
-			IN OUT LPQOS lpSQOS,
-			IN OUT LPQOS lpGQOS,
-			IN LPWSABUF lpCalleeId,
-			IN LPWSABUF lpCalleeData,
-			OUT GROUP FAR * g,
-			IN DWORD_PTR dwCallbackData)
-		{
-			//CWinSock *pWinSock = (CWinSock*)dwCallbackData;
-			//if (NULL != pWinSock)
-			//{
-			//	if (!pWinSock->acceptCB())
-			//	{
-			//		return CF_REJECT;
-			//	}
-			//}
-
-			return CF_ACCEPT;
-		}, (DWORD_PTR)this);
-
-		if (INVALID_SOCKET == socClient)
-		{
-			int iErr = WSAGetLastError();
-			if (WSAEWOULDBLOCK != iErr && WSATRY_AGAIN != iErr)
-			{
-				printSockErr("accept", iErr);
-			}
-
-			return iErr;
-		}
-
-		return 0;
-	}
-
-	E_WinSockResult CWinSock::connect(const sockaddr_in& addr)
-	{
-		//int iRet = ::connect(m_sock, (sockaddr*)&addr, sizeof addr);
-		int iRet = WSAConnect(m_sock, (sockaddr*)&addr, sizeof addr, NULL, NULL, NULL, NULL);
-		if (SOCKET_ERROR == iRet)
-		{
-			int iErr = WSAGetLastError();
-			if (WSAEWOULDBLOCK == iErr)
-			{
-				return E_WinSockResult::WSR_EWOULDBLOCK;
-			}
-
-			printSockErr("connect", iErr);
-			return E_WinSockResult::WSR_Error;
-		}
-
-		return E_WinSockResult::WSR_OK;
-	}
-
 	E_WinSockResult CWinSock::waitEvent(WSAEVENT hSockEvent, long& lEvent, map<UINT, int>& mapEventErr, DWORD dwTimeout)
 	{
 		lEvent = 0;
@@ -327,22 +266,28 @@ namespace NS_WinSock
 		return true;
 	}
 
+	static LPFN_DISCONNECTEX g_lpfnDisconnectEx = NULL;
+
 	bool CWinSock::disconnect()
 	{
-		if (NULL == s_lpfnDisconnectEx)
+		if (NULL == g_lpfnDisconnectEx)
 		{
-			if (NULL == (s_lpfnDisconnectEx = (LPFN_DISCONNECTEX)GetExtensionFunction(WSAID_DISCONNECTEX)))
+			if (NULL == (g_lpfnDisconnectEx = (LPFN_DISCONNECTEX)GetExtensionFunction(WSAID_DISCONNECTEX)))
 			{
 				return false;
 			}
 		}
+
+		m_eStatus = E_SockConnStatus::SCS_Closing;
+
+		this_thread::yield();
 
 		if (!cancelIO())
 		{
 			return false;
 		}
 		
-		if (!s_lpfnDisconnectEx(m_sock, NULL, TF_REUSE_SOCKET, 0))
+		if (!g_lpfnDisconnectEx(m_sock, NULL, TF_REUSE_SOCKET, 0))
 		{
 			return false;
 		}
@@ -366,6 +311,8 @@ namespace NS_WinSock
 		E_SockConnStatus ePrevState = m_eStatus;
 		m_eStatus = E_SockConnStatus::SCS_Closing;
 
+		this_thread::yield();
+
 		auto fnClose = [&] {
 			if (!cancelIO())
 			{
@@ -378,7 +325,7 @@ namespace NS_WinSock
 				{
 					//if (0 < lingerTime)
 					//{
-					//	(void)this->setNoBlock(FALSE);
+					//	(void)this->setNoBlock(false);
 					//}
 
 					int lpLinger[] = { 1, lingerTime };
@@ -427,32 +374,6 @@ namespace NS_WinSock
 
 	E_WinSockResult CWinSock::send(char* lpData, ULONG uLen, DWORD *pdwSentLen)
 	{
-		if (NULL == lpData || 0 == uLen)
-		{
-			return E_WinSockResult::WSR_Error;
-		}
-
-		if (m_bNoBlock)
-		{
-			m_sendData.add(lpData, uLen);
-
-			if (m_bAyncSending)
-			{
-				return E_WinSockResult::WSR_OK;
-			}
-
-			if (NULL == m_pSendPerIO)
-			{
-				m_pSendPerIO = tagSendPerIOData::alloc(*this);
-			}
-			else
-			{
-				m_pSendPerIO->asign(*this);
-			}
-
-			return _sendEx();
-		}
-
 		WSABUF wsaBuf;
 		wsaBuf.buf = lpData;
 		wsaBuf.len = uLen;
@@ -476,7 +397,142 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	E_WinSockResult CWinSock::_sendEx()
+	E_WinSockResult CWinSock::receive(char* lpBuff, ULONG uBuffSize, DWORD& uRecvLen)
+	{
+		WSABUF buff;
+		buff.buf = lpBuff;
+		buff.len = uBuffSize;
+
+		DWORD dwFlag = 0;
+		int iRet = ::WSARecv(m_sock, &buff, 1, &uRecvLen, &dwFlag, NULL, NULL);
+		if (SOCKET_ERROR == iRet)
+		{
+			int iErr = WSAGetLastError();
+			if (WSAEWOULDBLOCK == iErr)
+			{
+				return E_WinSockResult::WSR_EWOULDBLOCK;
+			}
+			else if (WSAECONNRESET == iErr)
+			{
+				return E_WinSockResult::WSR_PeerClosed;
+			}
+
+			printSockErr("_receive", iRet);
+			return E_WinSockResult::WSR_Error;
+		}
+
+		return E_WinSockResult::WSR_OK;
+	}
+
+	E_WinSockResult CWinSock::initAsync(CIOCP *pIOCP)
+	{
+		if (!setNoBlock(true))
+		{
+			return E_WinSockResult::WSR_Error;
+		}
+
+		if (NULL != pIOCP)
+		{
+			if (!pIOCP->bind(*this))
+			{
+				return E_WinSockResult::WSR_Error;
+			}
+		}
+		else
+		{
+			(void)::BindIoCompletionCallback((HANDLE)m_sock, [](
+				DWORD dwErrorCode,
+				DWORD dwNumberOfBytesTransfered,
+				LPOVERLAPPED lpOverlapped) {
+
+				if (NULL == lpOverlapped)
+				{
+					CWinSock::printSockErr("fnPoolCB", ::GetLastError());
+					return;
+				}
+
+				tagPerIOData& perIOData = (tagPerIOData&)*lpOverlapped;
+				CWinSock& winSock = (CWinSock&)perIOData.iocpHandler;
+				winSock.handleCPCallback(dwErrorCode, perIOData, dwNumberOfBytesTransfered);
+			}, 0);
+		}
+
+		return E_WinSockResult::WSR_OK;
+	}
+
+	E_WinSockResult CWinSock::asyncReceive(const CB_Recv& fnRecvCB, const CB_PeerShutdown& fnPeerShutdownedCB)
+	{
+		if (NULL == m_pRecvPerIO)
+		{
+			m_pRecvPerIO = tagRecvPerIOData::alloc(*this);
+		}
+		else
+		{
+			m_pRecvPerIO->asign(*this);
+		}
+
+		m_cbRecv = fnRecvCB;
+
+		m_cbPeerShutdown = fnPeerShutdownedCB;
+
+		return _asyncReceive();
+	}
+
+	E_WinSockResult CWinSock::_asyncReceive()
+	{
+		DWORD dwFlag = 0;
+		int iRet = ::WSARecv(m_sock, &m_pRecvPerIO->wsaBuf, 1, NULL, &dwFlag, m_pRecvPerIO, NULL);
+		if (SOCKET_ERROR == iRet)
+		{
+			int iErr = WSAGetLastError();
+			if (ERROR_IO_PENDING == iErr)
+			{
+				return E_WinSockResult::WSR_OK;
+			}
+			else if (WSAECONNRESET == iErr)
+			{
+				return E_WinSockResult::WSR_PeerClosed;
+			}
+
+			printSockErr("_receive", iErr);
+			return E_WinSockResult::WSR_Error;
+		}
+
+		if (HasOverlappedIoCompleted(m_pRecvPerIO))
+		{
+			this->handleCPCallback(0, *m_pRecvPerIO, (DWORD)m_pRecvPerIO->InternalHigh);
+		}
+
+		return E_WinSockResult::WSR_OK;
+	}
+
+	E_WinSockResult CWinSock::asyncSend(char* lpData, ULONG uLen)
+	{
+		if (NULL == lpData || 0 == uLen)
+		{
+			return E_WinSockResult::WSR_Error;
+		}
+
+		m_sendData.add(lpData, uLen);
+
+		if (m_bAyncSending)
+		{
+			return E_WinSockResult::WSR_OK;
+		}
+
+		if (NULL == m_pSendPerIO)
+		{
+			m_pSendPerIO = tagSendPerIOData::alloc(*this);
+		}
+		else
+		{
+			m_pSendPerIO->asign(*this);
+		}
+
+		return _asyncSend();
+	}
+
+	E_WinSockResult CWinSock::_asyncSend()
 	{
 		m_bAyncSending = true;
 
@@ -511,138 +567,31 @@ namespace NS_WinSock
 
 		return E_WinSockResult::WSR_OK;
 	}
-
-	E_WinSockResult CWinSock::receive(char* lpBuff, ULONG uBuffSize, DWORD& uRecvLen)
-	{
-		WSABUF buff;
-		buff.buf = lpBuff;
-		buff.len = uBuffSize;
-
-		DWORD dwFlag = 0;
-		int iRet = ::WSARecv(m_sock, &buff, 1, &uRecvLen, &dwFlag, NULL, NULL);
-		if (SOCKET_ERROR == iRet)
-		{
-			int iErr = WSAGetLastError();
-			if (WSAEWOULDBLOCK == iErr)
-			{
-				return E_WinSockResult::WSR_EWOULDBLOCK;
-			}
-			else if (WSAECONNRESET == iErr)
-			{
-				return E_WinSockResult::WSR_PeerClosed;
-			}
-
-			printSockErr("_receive", iRet);
-			return E_WinSockResult::WSR_Error;
-		}
-
-		return E_WinSockResult::WSR_OK;
-	}
-	
-	E_WinSockResult CWinSock::asyncReceive(const CB_RecvCB& fnRecvCB, const CB_PeerShutdownedCB& fnPeerShutdownedCB, CIOCP *pIOCP)
-	{
-		if (!setNoBlock(true))
-		{
-			return E_WinSockResult::WSR_Error;
-		}
-
-		if (NULL == m_pRecvPerIO)
-		{
-			m_pRecvPerIO = tagRecvPerIOData::alloc(*this);
-		}
-		else
-		{
-			m_pRecvPerIO->asign(*this);
-		}
-
-		m_fnRecvCB = fnRecvCB;
-
-		m_fnPeerShutdownedCB = fnPeerShutdownedCB;
-
-		if (NULL != pIOCP)
-		{
-			if (!pIOCP->bind(*this))
-			{
-				return E_WinSockResult::WSR_Error;
-			}
-		}
-		else
-		{
-			poolBind();
-		}
-
-		return _asyncReceive();
-	}
-
-	E_WinSockResult CWinSock::_asyncReceive()
-	{
-		DWORD dwFlag = 0;
-		int iRet = ::WSARecv(m_sock, &m_pRecvPerIO->wsaBuf, 1, NULL, &dwFlag, m_pRecvPerIO, NULL);
-		if (SOCKET_ERROR == iRet)
-		{
-			int iErr = WSAGetLastError();
-			if (ERROR_IO_PENDING == iErr)
-			{
-				return E_WinSockResult::WSR_OK;
-			}
-			else if (WSAECONNRESET == iErr)
-			{
-				return E_WinSockResult::WSR_PeerClosed;
-			}
-
-			printSockErr("_receive", iErr);
-			return E_WinSockResult::WSR_Error;
-		}
-
-		if (HasOverlappedIoCompleted(m_pRecvPerIO))
-		{
-			this->handleCPCallback(0, *m_pRecvPerIO, (DWORD)m_pRecvPerIO->InternalHigh);
-		}
-
-		return E_WinSockResult::WSR_OK;
-	}
-
-	static bool checkNTStatus(ULONG_PTR Internal)
-	{
-		if (STATUS_SUCCESS != Internal)
-		{
-			if (STATUS_CANCELLED != Internal && STATUS_CONNECTION_ABORTED != Internal
-				&& STATUS_CONNECTION_RESET != Internal && STATUS_REMOTE_DISCONNECT != Internal && STATUS_PENDING != Internal)
-			{
-				CWinSock::printSockErr("checkNTStatus", (int)Internal);
-			}
-
-			return false;
-		}
-
-		return true;
-	}
 	
 	void CWinSock::handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred)
 	{
-		if (STATUS_REMOTE_DISCONNECT == Internal || STATUS_REMOTE_DISCONNECT == perIOData.Internal)
+		if (E_SockConnStatus::SCS_Closing == m_eStatus)
 		{
-			onPeerClosed();
 			return;
 		}
 
 		if (!checkNTStatus(Internal) || !checkNTStatus(perIOData.Internal))
 		{
+			if (STATUS_REMOTE_DISCONNECT == Internal || STATUS_REMOTE_DISCONNECT == perIOData.Internal)
+			{
+				onPeerClosed();
+			}
+
 			return;
 		}
 
-		handleCPCallback(perIOData, dwNumberOfBytesTransferred);
-	}
-
-	void CWinSock::handleCPCallback(tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred)
-	{
 		if (&perIOData == m_pRecvPerIO)
 		{
 			_handleRecvCB(perIOData, dwNumberOfBytesTransferred);
 		}
 		else if (&perIOData == m_pSendPerIO)
 		{
-			_sendEx();
+			_asyncSend();
 		}
 	}
 
@@ -708,9 +657,9 @@ namespace NS_WinSock
 
 	bool CWinSock::onReceived(char *lpData, DWORD dwNumberOfBytesTransferred)
 	{
-		if (m_fnRecvCB)
+		if (m_cbRecv)
 		{
-			if (!m_fnRecvCB(*this, lpData, dwNumberOfBytesTransferred))
+			if (!m_cbRecv(*this, lpData, dwNumberOfBytesTransferred))
 			{
 				return false;
 			}
@@ -723,30 +672,9 @@ namespace NS_WinSock
 	{
 		(void)this->close();
 		
-		if (m_fnPeerShutdownedCB)
+		if (m_cbPeerShutdown)
 		{
-			m_fnPeerShutdownedCB(*this);
+			m_cbPeerShutdown(*this);
 		}
-	}
-
-	void CWinSock::poolBind()
-	{
-		LPOVERLAPPED_COMPLETION_ROUTINE fnPoolCB = [](
-			DWORD dwErrorCode,
-			DWORD dwNumberOfBytesTransfered,
-			LPOVERLAPPED lpOverlapped) {
-
-			if (NULL == lpOverlapped)
-			{
-				CWinSock::printSockErr("fnPoolCB", ::GetLastError());
-				return;
-			}
-
-			tagPerIOData& perIOData = (tagPerIOData&)*lpOverlapped;
-			CWinSock& winSock = (CWinSock&)perIOData.iocpHandler;
-			winSock.handleCPCallback(dwErrorCode, perIOData, dwNumberOfBytesTransfered);
-		};
-
-		(void)::BindIoCompletionCallback((HANDLE)m_sock, fnPoolCB, 0);
 	}
 };

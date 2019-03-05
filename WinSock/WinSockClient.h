@@ -12,13 +12,21 @@ namespace NS_WinSock
 		{
 		}
 
-		CWinSockClient(SOCKET sock, E_SockConnStatus eStatus = E_SockConnStatus::SCS_None)
-			: CWinSock(sock, eStatus)
+		CWinSockClient(SOCKET sock, bool bConnected=true)
+			: CWinSock(sock, bConnected)
+		{
+		}
+
+		CWinSockClient(SOCKET sock, E_SockConnStatus eConnStatus)
+			: CWinSock(sock, eConnStatus)
 		{
 		}
 
 	private:
 		WSAEVENT m_hEventWaitConnected = WSA_INVALID_EVENT;
+
+	private:
+		E_WinSockResult _connect(const sockaddr_in& addr);
 
 	public:
 		E_WinSockResult connect(const char *pszServerAddr, UINT uServerPort, bool bWait=false, DWORD dwTimeout=0);

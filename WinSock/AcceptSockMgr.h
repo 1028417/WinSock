@@ -11,13 +11,10 @@ namespace NS_WinSock
 
 		UINT uRecycleCount = 0;
 		UINT uHistoryRecycleSum = 0;
-
-		UINT uHistoryMsgSum = 0;
 	};
 
-	class CAcceptSockMgr;
-	using FN_AcceptSockMgrCB = function<bool(CAcceptSockMgr& AcceptSockMgr, CWinSock& WinSock)>;
-
+	using CB_Accept = function<bool(CWinSock&)>;
+	
 	class CAcceptSockMgr
 	{
 	public:
@@ -29,6 +26,10 @@ namespace NS_WinSock
 		}
 
 	private:
+		CB_Accept m_cbAccept;
+		CB_Recv m_cbRecv;
+		CB_PeerShutdown m_cbPeerShutdown;
+
 		bool m_bShutdown = false;
 
 		thread m_thrNewAccept;
@@ -47,33 +48,27 @@ namespace NS_WinSock
 		mutex m_mtxRecycle;
 		list<CWinSock*> m_lstRecycleSock;
 
-		mutex m_mtxMsg;
-		list<vector<char>> m_lstRecvMsg;
-
 		UINT m_uMaxMsgCount = 0;
 
 	public:
 		tagAcceptSockSum m_sum;
 
 	public:
-		void init(const FN_AcceptSockMgrCB& fnOnAccepted, const FN_AcceptSockMgrCB& fnShuntdown);
+		void init(const CB_Accept& cbAccept, const CB_Recv& cbRecv, const CB_PeerShutdown& cbPeerShutdown=NULL);
 
-		void newAccept(CWinSock *pWinSock);
+		void accept(CWinSock *pWinSock);
 
-		void newRecycle(CWinSock *pWinSock);
-
-		void enumerate(const function<bool(CWinSock& socClient)>& fnCB);
+		void enumerate(const function<bool(CWinSock& socClient)>& cb);
+		
+		UINT fetchRecycle(UINT uCount, const function<void(CWinSock& socClient)>& cb);
 
 		void shutdown();
 
-		size_t getCount();
-
-		UINT fetchRecycle(UINT uCount, const function<void(CWinSock& socClient)>& fnCB);
-
-		UINT addMsg(const char* lpMsg, UINT uLen);
-
 	private:
-		void remove(const list<CWinSock*>& lstRemov);
-		void recycle(const list<CWinSock*>& lstRecycle);
+		void _acceptLoop();
+		bool _accept(CWinSock& WinSock);
+
+		void _recycleLoop();
+		void _recycle(const list<CWinSock*>& lstRecycle);
 	};
 };

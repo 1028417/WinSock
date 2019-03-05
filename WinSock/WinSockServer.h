@@ -47,14 +47,17 @@ namespace NS_WinSock
 
 		E_WinSockResult _acceptEx(SOCKET socAccept, tagAcceptPerIOData& perIOData);
 
+		void handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred);
+
 	public:
-		bool create(UINT uPort);
+		E_WinSockResult create();
 
-		void accept(UINT uThreadCount = 0);
+		E_WinSockResult listen(UINT uPort, int backlog = SOMAXCONN);
 
-		bool poolAccept(UINT uClientCount = 0);
+		E_WinSockResult accept(SOCKET& socClient, sockaddr_in& addrClient);
 
-		bool iocpAccept(UINT uIOCPThreadCount, UINT uClientCount = 0);
+		E_WinSockResult asyncAccept(UINT uClientCount, const CB_Accept& cbAccept
+			, const CB_Recv& cbRecv, const CB_PeerShutdown& cbPeerShutdown, UINT uIOCPThreadCount=0);
 
 		UINT broadcast(const string& strData);
 
@@ -73,8 +76,5 @@ namespace NS_WinSock
 		}
 
 		bool shutdown();
-
-	protected:
-		void handleCPCallback(tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred);
 	};
 };

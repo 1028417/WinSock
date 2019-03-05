@@ -246,9 +246,11 @@ namespace NS_WinSock
 			TD_PerIOArray::free(m_pPerIOArray);
 		}
 
-		bool asign(size_t size, ICPCallback& iocpHandler, const FN_CB& fnCB = NULL)
+		bool asign(size_t size, ICPCallback& iocpHandler, const FN_CB& cb = NULL)
 		{
-			m_pPerIOArray = TD_PerIOArray::alloc(size, [&iocpHandler](UINT uIndex) {return &iocpHandler;}, fnCB);
+			m_pPerIOArray = TD_PerIOArray::alloc(size, [&](UINT uIndex) {
+				return &iocpHandler;
+			}, cb);
 			if (NULL == m_pPerIOArray)
 			{
 				return false;
@@ -256,17 +258,17 @@ namespace NS_WinSock
 			return true;
 		}
 
-		bool asign(const vector<ICPCallback*>& vecCPHandler, const FN_CB& fnCB = NULL)
+		bool asign(const vector<ICPCallback*>& vecCPHandler, const FN_CB& cb = NULL)
 		{
 			auto itr = vecCPHandler.begin();
-			m_pPerIOArray = TD_PerIOArray::allocEx(vecCPHandler.size(), m_perIOVector, [](UINT uIndex) {
+			m_pPerIOArray = TD_PerIOArray::alloc(vecCPHandler.size(), [&](UINT uIndex) {
 				if (itr == vecCPHandler.end())
 				{
 					return NULL;
 				}
 
 				return *itr++;
-			}, fnCB);
+			}, cb);
 
 			if (NULL == m_pPerIOArray)
 			{

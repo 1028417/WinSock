@@ -31,8 +31,6 @@ namespace NS_WinSock
 
 	class CIOCP
 	{
-		friend void _iocpThread(LPVOID pPara);
-
 	public:
 		CIOCP()
 		{
@@ -47,6 +45,8 @@ namespace NS_WinSock
 		vector<HANDLE> m_vecThread;
 
 	private:
+		static void _iocpThread(LPVOID pPara);
+
 		bool _queryIOCP();
 
 	protected:
