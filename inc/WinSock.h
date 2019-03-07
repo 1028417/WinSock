@@ -33,7 +33,7 @@ namespace NS_WinSock
 		WSR_OK
 		, WSR_Error
 		, WSR_EWOULDBLOCK
-		, WSR_PeerClosed
+		, WSR_PeerDisconnect
 		, WSR_Timeout
 	};
 
@@ -108,7 +108,7 @@ namespace NS_WinSock
 	class CWinSock;
 	using CB_Recv = function<bool(CWinSock&, char *pData, DWORD dwNumberOfBytesTransferred)>;
 
-	using CB_PeerShutdown = function<void(CWinSock&)>;
+	using CB_PeerDisconnect = function<void(CWinSock&)>;
 
 	using VEC_SendData = vector<char>;
 
@@ -224,7 +224,7 @@ namespace NS_WinSock
 
 		CB_Recv m_cbRecv;
 
-		CB_PeerShutdown m_cbPeerShutdown;
+		CB_PeerDisconnect m_cbPeerDisconnect;
 
 		volatile bool m_bAyncSending = false;
 		
@@ -246,7 +246,7 @@ namespace NS_WinSock
 
 		virtual bool onReceived(char *lpData, DWORD dwNumberOfBytesTransferred);
 
-		virtual void onPeerClosed();
+		virtual void onPeerDisconnect();
 		
 		bool setOpt(int optname, const void *optval, int optlen);
 
@@ -279,7 +279,7 @@ namespace NS_WinSock
 
 		E_WinSockResult initAsync(CIOCP *pIOCP=NULL);
 
-		E_WinSockResult asyncReceive(const CB_Recv& fnRecvCB, const CB_PeerShutdown& fnPeerShutdownedCB=NULL);
+		E_WinSockResult asyncReceive(const CB_Recv& fnRecvCB, const CB_PeerDisconnect& fnPeerShutdownedCB=NULL);
 
 		E_WinSockResult asyncSend(char* lpData, ULONG uLen);
 

@@ -1,7 +1,7 @@
 
-#include "WinSock.h"
+#include "../inc/WinSock.h"
 
-#include "Console.h"
+#include "../inc/Console.h"
 
 #include <mstcpip.h>
 
@@ -387,7 +387,7 @@ namespace NS_WinSock
 			}
 			else if (WSAECONNRESET == iErr)
 			{
-				return E_WinSockResult::WSR_PeerClosed;
+				return E_WinSockResult::WSR_PeerDisconnect;
 			}
 
 			printSockErr("send", iErr);
@@ -414,7 +414,7 @@ namespace NS_WinSock
 			}
 			else if (WSAECONNRESET == iErr)
 			{
-				return E_WinSockResult::WSR_PeerClosed;
+				return E_WinSockResult::WSR_PeerDisconnect;
 			}
 
 			printSockErr("_receive", iRet);
@@ -460,7 +460,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	E_WinSockResult CWinSock::asyncReceive(const CB_Recv& fnRecvCB, const CB_PeerShutdown& fnPeerShutdownedCB)
+	E_WinSockResult CWinSock::asyncReceive(const CB_Recv& fnRecvCB, const CB_PeerDisconnect& fnPeerShutdownedCB)
 	{
 		if (NULL == m_pRecvPerIO)
 		{
@@ -473,7 +473,7 @@ namespace NS_WinSock
 
 		m_cbRecv = fnRecvCB;
 
-		m_cbPeerShutdown = fnPeerShutdownedCB;
+		m_cbPeerDisconnect = fnPeerShutdownedCB;
 
 		return _asyncReceive();
 	}
@@ -491,7 +491,7 @@ namespace NS_WinSock
 			}
 			else if (WSAECONNRESET == iErr)
 			{
-				return E_WinSockResult::WSR_PeerClosed;
+				return E_WinSockResult::WSR_PeerDisconnect;
 			}
 
 			printSockErr("_receive", iErr);
@@ -579,7 +579,7 @@ namespace NS_WinSock
 		{
 			if (STATUS_REMOTE_DISCONNECT == Internal || STATUS_REMOTE_DISCONNECT == perIOData.Internal)
 			{
-				onPeerClosed();
+				onPeerDisconnect();
 			}
 
 			return;
@@ -607,7 +607,7 @@ namespace NS_WinSock
 			auto eRet = this->receive(lpBuff, sizeof(lpBuff), uRecvLen);
 			if (E_WinSockResult::WSR_OK != eRet || 0 == uRecvLen)
 			{
-				onPeerClosed();
+				onPeerDisconnect();
 				
 				return;
 			}
@@ -620,9 +620,9 @@ namespace NS_WinSock
 				eRet = this->receive(lpBuff, sizeof(lpBuff), uRecvLen);
 				if (E_WinSockResult::WSR_OK != eRet || 0 == uRecvLen)
 				{
-					if (E_WinSockResult::WSR_PeerClosed == eRet)
+					if (E_WinSockResult::WSR_PeerDisconnect == eRet)
 					{
-						onPeerClosed();
+						onPeerDisconnect();
 						return;
 					}
 
@@ -638,7 +638,7 @@ namespace NS_WinSock
 		{
 			if (0 == dwNumberOfBytesTransferred)
 			{
-				onPeerClosed();
+				onPeerDisconnect();
 				return;
 			}
 			lpData = m_pRecvPerIO->wsaBuf.buf;
@@ -649,9 +649,9 @@ namespace NS_WinSock
 			return;
 		}
 
-		if (E_WinSockResult::WSR_PeerClosed == _asyncReceive())
+		if (E_WinSockResult::WSR_PeerDisconnect == _asyncReceive())
 		{
-			onPeerClosed();
+			onPeerDisconnect();
 		}
 	}
 
@@ -668,13 +668,13 @@ namespace NS_WinSock
 		return true;
 	}
 
-	void CWinSock::onPeerClosed()
+	void CWinSock::onPeerDisconnect()
 	{
 		(void)this->close();
 		
-		if (m_cbPeerShutdown)
+		if (m_cbPeerDisconnect)
 		{
-			m_cbPeerShutdown(*this);
+			m_cbPeerDisconnect(*this);
 		}
 	}
 };

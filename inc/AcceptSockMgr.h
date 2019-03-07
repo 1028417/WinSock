@@ -28,7 +28,7 @@ namespace NS_WinSock
 	private:
 		CB_Accept m_cbAccept;
 		CB_Recv m_cbRecv;
-		CB_PeerShutdown m_cbPeerShutdown;
+		CB_PeerDisconnect m_cbPeerDisconnect;
 
 		bool m_bShutdown = false;
 
@@ -54,7 +54,7 @@ namespace NS_WinSock
 		tagAcceptSockSum m_sum;
 
 	public:
-		void init(const CB_Accept& cbAccept, const CB_Recv& cbRecv, const CB_PeerShutdown& cbPeerShutdown=NULL);
+		void init(const CB_Accept& cbAccept, const CB_Recv& cbRecv, const CB_PeerDisconnect& cbPeerDisconnect=NULL);
 
 		void accept(CWinSock *pWinSock);
 

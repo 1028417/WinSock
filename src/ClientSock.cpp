@@ -1,11 +1,11 @@
 
-#include "WinSockClient.h"
+#include "../inc/ClientSock.h"
 
 #include <WS2tcpip.h>
 
 namespace NS_WinSock
 {
-	E_WinSockResult CWinSockClient::connect(const char *pszServerAddr, UINT uServerPort, bool bWait, DWORD dwTimeout)
+	E_WinSockResult CClientSock::connect(const char *pszServerAddr, UINT uServerPort, bool bWait, DWORD dwTimeout)
 	{
 		sockaddr_in addrServer;
 		memset(&addrServer, 0, sizeof addrServer);
@@ -31,7 +31,7 @@ namespace NS_WinSock
 		return eRet;
 	}
 
-	E_WinSockResult CWinSockClient::_connect(const sockaddr_in& addr)
+	E_WinSockResult CClientSock::_connect(const sockaddr_in& addr)
 	{
 		//int iRet = ::connect(m_sock, (sockaddr*)&addr, sizeof addr);
 		int iRet = WSAConnect(m_sock, (sockaddr*)&addr, sizeof addr, NULL, NULL, NULL, NULL);
@@ -50,7 +50,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	E_WinSockResult CWinSockClient::checkConnected(DWORD dwTimeout)
+	E_WinSockResult CClientSock::checkConnected(DWORD dwTimeout)
 	{
 		if (E_SockConnStatus::SCS_Connected == m_eStatus)
 		{
@@ -103,7 +103,7 @@ namespace NS_WinSock
 
 #define __Event_CheckConnected (FD_CONNECT | FD_WRITE)
 
-	E_WinSockResult CWinSockClient::waitConnected(DWORD dwTimeout)
+	E_WinSockResult CClientSock::waitConnected(DWORD dwTimeout)
 	{
 		if (E_SockConnStatus::SCS_Connected == m_eStatus)
 		{
@@ -165,7 +165,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	bool CWinSockClient::close(bool bLinger, int lingerTime)
+	bool CClientSock::close(bool bLinger, int lingerTime)
 	{
 		if (!__super::close(bLinger, lingerTime))
 		{

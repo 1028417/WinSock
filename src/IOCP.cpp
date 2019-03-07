@@ -1,9 +1,9 @@
 
 #include <process.h>
 
-#include "IOCP.h"
+#include "../inc/IOCP.h"
 
-#include "WinSock.h"
+#include "../inc/WinSock.h"
 
 static const ULONG_PTR __IOCPShutdownSign = (ULONG_PTR)-1;
 

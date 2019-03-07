@@ -1,61 +1,64 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="WinSock\WinSockClient.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\AcceptSockMgr.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\WinSockServer.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\AcceptSockNode.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\WinSock.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\CharVector.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\IOCP.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\ClientSock.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\PerIOData.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\Console.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\AcceptSockMgr.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\IOCP.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\AcceptSockNode.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\mtutil.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\CharVector.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\PerIOData.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\Console.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\ServerSock.h">
+      <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="WinSock\mtutil.h">
-      <Filter>WinSock</Filter>
+    <ClInclude Include="inc\WinSock.h">
+      <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="WinSock\WinSockClient.cpp">
-      <Filter>WinSock</Filter>
+    <ClCompile Include="src\AcceptSockMgr.cpp">
+      <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="WinSock\WinSockServer.cpp">
-      <Filter>WinSock</Filter>
+    <ClCompile Include="src\AcceptSockNode.cpp">
+      <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="WinSock\WinSock.cpp">
-      <Filter>WinSock</Filter>
+    <ClCompile Include="src\ClientSock.cpp">
+      <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="WinSock\IOCP.cpp">
-      <Filter>WinSock</Filter>
+    <ClCompile Include="src\IOCP.cpp">
+      <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="WinSock\AcceptSockMgr.cpp">
-      <Filter>WinSock</Filter>
+    <ClCompile Include="src\ServerSock.cpp">
+      <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="WinSock\AcceptSockNode.cpp">
-      <Filter>WinSock</Filter>
+    <ClCompile Include="src\WinSock.cpp">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="WinSock">
+    <Filter Include="src">
       <UniqueIdentifier>{5d2f0ab3-1455-4fb4-919d-e4e1d48ba442}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="inc">
+      <UniqueIdentifier>{660dd595-a04e-4bc7-9068-3b058c4d08b1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

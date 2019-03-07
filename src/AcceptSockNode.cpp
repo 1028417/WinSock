@@ -1,7 +1,7 @@
 
-#include "AcceptSockNode.h"
+#include "../inc/AcceptSockNode.h"
 
-#include "WinSockServer.h"
+#include "../inc/ServerSock.h"
 
 namespace NS_WinSock
 {

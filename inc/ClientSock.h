@@ -5,19 +5,19 @@
 
 namespace NS_WinSock
 {
-	class __WinSockExt CWinSockClient : public CWinSock
+	class __WinSockExt CClientSock : public CWinSock
 	{
 	public:
-		CWinSockClient()
+		CClientSock()
 		{
 		}
 
-		CWinSockClient(SOCKET sock, bool bConnected=true)
+		CClientSock(SOCKET sock, bool bConnected=true)
 			: CWinSock(sock, bConnected)
 		{
 		}
 
-		CWinSockClient(SOCKET sock, E_SockConnStatus eConnStatus)
+		CClientSock(SOCKET sock, E_SockConnStatus eConnStatus)
 			: CWinSock(sock, eConnStatus)
 		{
 		}

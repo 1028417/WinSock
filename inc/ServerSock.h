@@ -26,10 +26,10 @@ namespace NS_WinSock
 		}
 	};
 
-	class __WinSockExt CWinSockServer : public CWinSock
+	class __WinSockExt CServerSock : public CWinSock
 	{
 	public:
-		CWinSockServer()
+		CServerSock()
 		{
 		}
 
@@ -57,7 +57,7 @@ namespace NS_WinSock
 		E_WinSockResult accept(SOCKET& socClient, sockaddr_in& addrClient);
 
 		E_WinSockResult asyncAccept(UINT uClientCount, const CB_Accept& cbAccept
-			, const CB_Recv& cbRecv, const CB_PeerShutdown& cbPeerShutdown, UINT uIOCPThreadCount=0);
+			, const CB_Recv& cbRecv, const CB_PeerDisconnect& cbPeerDisconnect, UINT uIOCPThreadCount=0);
 
 		UINT broadcast(const string& strData);
 

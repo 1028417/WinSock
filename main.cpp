@@ -1,10 +1,10 @@
 
 
-#include "WinSock/Console.h"
+#include "inc/Console.h"
 
-#include "WinSock/WinSockServer.h"
+#include "inc/ServerSock.h"
 
-#include "WinSock/WinSockClient.h"
+#include "inc/ClientSock.h"
 
 using namespace NS_WinSock;
 
@@ -33,7 +33,7 @@ struct tagTestPara
 
 static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 {
-	auto fnClientSockOperate = [&](CWinSockClient& socClient, E_ClientSockOperate eOperate)
+	auto fnClientSockOperate = [&](CClientSock& socClient, E_ClientSockOperate eOperate)
 	{
 		auto fnRecvCPCB = [](CWinSock& WinSock, char *pData, DWORD dwNumberOfBytesTransferred) {
 			if (NULL == pData || 0 == dwNumberOfBytesTransferred)
@@ -110,7 +110,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 	
 	struct tagClientGroup
 	{
-		vector<CWinSockClient> vecWinSockClient;
+		vector<CClientSock> vecClientSock;
 
 		thread thrConn;
 		thread thrTest;
@@ -120,8 +120,8 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 	tagClock timer("createClients");
 	for (auto& ClientGroup : vecClientGroup)
 	{
-		ClientGroup.vecWinSockClient.resize(uClientCount/uGroupCount);
-		for (auto& socClient : ClientGroup.vecWinSockClient)
+		ClientGroup.vecClientSock.resize(uClientCount/uGroupCount);
+		for (auto& socClient : ClientGroup.vecClientSock)
 		{
 			if (!fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Create))
 			{
@@ -135,7 +135,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 	for (auto& ClientGroup : vecClientGroup)
 	{
 		ClientGroup.thrConn = thread([&] {
-			for (auto& socClient : ClientGroup.vecWinSockClient)
+			for (auto& socClient : ClientGroup.vecClientSock)
 			{
 				if (!fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Connect))
 				{
@@ -154,7 +154,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 	{
 		ClientGroup.thrTest = thread([&] {
 			::Sleep(3000);
-			for (auto& socClient : ClientGroup.vecWinSockClient)
+			for (auto& socClient : ClientGroup.vecClientSock)
 			{
 				if (!fnClientSockOperate(socClient, E_ClientSockOperate::CSO_checkConnected))
 				{
@@ -169,7 +169,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 					break;
 				}
 
-				for (UINT uIndex = 0; uIndex < ClientGroup.vecWinSockClient.size(); uIndex++)
+				for (UINT uIndex = 0; uIndex < ClientGroup.vecClientSock.size(); uIndex++)
 				{
 					::Sleep(3);
 					if (para.bRestartClient || para.bQuit)
@@ -177,7 +177,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 						break;
 					}
 
-					auto& socClient = ClientGroup.vecWinSockClient[uIndex];
+					auto& socClient = ClientGroup.vecClientSock[uIndex];
 				
 					if (para.bAutoReconn)
 					{
@@ -232,7 +232,7 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 				}
 			}
 
-			for (auto& socClient : ClientGroup.vecWinSockClient)
+			for (auto& socClient : ClientGroup.vecClientSock)
 			{
 				fnClientSockOperate(socClient, E_ClientSockOperate::CSO_Close);
 			}
@@ -249,28 +249,28 @@ static void startClient(UINT uClientCount, UINT uGroupCount, tagTestPara& para)
 	});
 }
 
-static CWinSockServer g_WinSockServer;
+static CServerSock g_ServerSock;
 
 static UINT g_uHistoryMsgSum = 0;
 
 static bool startServer(UINT uClientCount)
 {
 	tagClock clock("createServer");
-	if (E_WinSockResult::WSR_OK != g_WinSockServer.create())
+	if (E_WinSockResult::WSR_OK != g_ServerSock.create())
 	{
-		CConsole::inst().printT("WinSockServer.create fail");
+		CConsole::inst().printT("ServerSock.create fail");
 		return false;
 	}
 
-	if (E_WinSockResult::WSR_OK != g_WinSockServer.listen(__ServerPort))
+	if (E_WinSockResult::WSR_OK != g_ServerSock.listen(__ServerPort))
 	{
-		CConsole::inst().printT("WinSockServer.listen fail");
+		CConsole::inst().printT("ServerSock.listen fail");
 		return false;
 	}
 
-	//if (!g_WinSockServer.asyncAccept(uClientCount))
+	//if (!g_ServerSock.asyncAccept(uClientCount))
 	//{
-	//	CConsole::inst().print("WinSockServer.poolAccept fail");
+	//	CConsole::inst().print("ServerSock.poolAccept fail");
 	//	return false;
 	//}
 
@@ -279,9 +279,9 @@ static bool startServer(UINT uClientCount)
 		return true;
 	};
 
-	if (E_WinSockResult::WSR_OK != g_WinSockServer.asyncAccept(uClientCount, NULL, fnRecvCB, NULL, thread::hardware_concurrency()))
+	if (E_WinSockResult::WSR_OK != g_ServerSock.asyncAccept(uClientCount, NULL, fnRecvCB, NULL, thread::hardware_concurrency()))
 	{
-		CConsole::inst().printT("WinSockServer.iocpAccept fail");
+		CConsole::inst().printT("ServerSock.iocpAccept fail");
 		return false;
 	}
 	clock.print();
@@ -315,7 +315,7 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 	auto fnPrintServerInfo = [&] {
 		tagAcceptSockSum acceptSockSum;
 		list<pair<UINT, UINT>> lstSnapshot;
-		g_WinSockServer.getClientInfo(acceptSockSum, lstSnapshot);
+		g_ServerSock.getClientInfo(acceptSockSum, lstSnapshot);
 
 		CConsole::inst().print([&](ostream& out) {
 			out << "Active Client:" << acceptSockSum.uCurrConnCount
@@ -380,7 +380,7 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 			if (1 == sscanf_s(strInput.c_str(), "bc:%9s", lpBC, (UINT)sizeof(lpBC)))
 			{
 				tagClock clock("broadcast");
-				UINT uRet = g_WinSockServer.broadcast(lpBC);
+				UINT uRet = g_ServerSock.broadcast(lpBC);
 				clock.print("broadcasted: " + to_string(uRet));
 			}
 		}
@@ -392,7 +392,7 @@ static UINT testWinSock(UINT uClientCount, UINT uGroupCount)
 	
 	thrClient.join();
 
-	if (!g_WinSockServer.shutdown())
+	if (!g_ServerSock.shutdown())
 	{
 		return false;
 	}
@@ -405,7 +405,7 @@ int main()
 	printf("input 'autoReconn' to test auto reconnect, 'restart' to restart all clients\n\
       'bc:xxx' to broadcast, 'exit' to quit\n\n");
 
-	UINT uFailNum = testWinSock(60000, 8);
+	UINT uFailNum = testWinSock(10000, 2);
 
 	CConsole::inst().print([uFailNum](ostream& out) {
 		out << "test finish, FailNum:" << uFailNum;

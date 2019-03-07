@@ -1,11 +1,11 @@
 
-#include "WinSockServer.h"
+#include "../inc/ServerSock.h"
 
 namespace NS_WinSock
 {
 	static const UINT __AcceptDeliverCoefficient = 8;
 
-	E_WinSockResult CWinSockServer::create()
+	E_WinSockResult CServerSock::create()
 	{
 		E_WinSockResult eRet = __super::create(true);
 		if (E_WinSockResult::WSR_OK != eRet)
@@ -28,7 +28,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	E_WinSockResult CWinSockServer::listen(UINT uPort, int backlog)
+	E_WinSockResult CServerSock::listen(UINT uPort, int backlog)
 	{
 		sockaddr_in addr;
 		addr.sin_family = AF_INET;
@@ -52,7 +52,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	E_WinSockResult CWinSockServer::accept(SOCKET& socClient, sockaddr_in& addrClient)
+	E_WinSockResult CServerSock::accept(SOCKET& socClient, sockaddr_in& addrClient)
 	{
 		socClient = INVALID_SOCKET;
 
@@ -96,7 +96,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	E_WinSockResult CWinSockServer::_acceptEx(SOCKET socAccept, tagAcceptPerIOData& perIOData)
+	E_WinSockResult CServerSock::_acceptEx(SOCKET socAccept, tagAcceptPerIOData& perIOData)
 	{
 		if (!m_lpfnAcceptEx(m_sock, socAccept, perIOData.wsaBuf.buf, perIOData.dwReceiveDataLength, __ADDRLEN, __ADDRLEN, NULL, &perIOData))
 		{
@@ -118,7 +118,7 @@ namespace NS_WinSock
 		return E_WinSockResult::WSR_OK;
 	}
 
-	bool CWinSockServer::_acceptEx(UINT uClientCount)
+	bool CServerSock::_acceptEx(UINT uClientCount)
 	{
 		return m_AcceptPerIOArray.asign(__AcceptDeliverCoefficient, *this
 			, [&](tagAcceptPerIOData& perIOData) {
@@ -138,8 +138,8 @@ namespace NS_WinSock
 		});
 	}
 
-	E_WinSockResult CWinSockServer::asyncAccept(UINT uClientCount, const CB_Accept& cbAccept
-		, const CB_Recv& cbRecv, const CB_PeerShutdown& cbPeerShutdown, UINT uIOCPThreadCount)
+	E_WinSockResult CServerSock::asyncAccept(UINT uClientCount, const CB_Accept& cbAccept
+		, const CB_Recv& cbRecv, const CB_PeerDisconnect& cbPeerDisconnect, UINT uIOCPThreadCount)
 	{
 		CIOCP *pIOCP = NULL;
 		if (0 != uIOCPThreadCount)
@@ -163,12 +163,12 @@ namespace NS_WinSock
 			return E_WinSockResult::WSR_Error;
 		}
 
-		m_AcceptSockMgr.init(cbAccept, cbRecv, cbPeerShutdown);
+		m_AcceptSockMgr.init(cbAccept, cbRecv, cbPeerDisconnect);
 
 		return E_WinSockResult::WSR_OK;
 	}
 
-	UINT CWinSockServer::broadcast(const string& strData)
+	UINT CServerSock::broadcast(const string& strData)
 	{
 		UINT uCount = 0;
 
@@ -185,7 +185,7 @@ namespace NS_WinSock
 		return uCount;
 	}
 
-	bool CWinSockServer::shutdown()
+	bool CServerSock::shutdown()
 	{
 		if (!m_iocp.shutdown())
 		{
@@ -202,7 +202,7 @@ namespace NS_WinSock
 		return true;
 	}
 
-	void CWinSockServer::handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred)
+	void CServerSock::handleCPCallback(ULONG_PTR Internal, tagPerIOData& perIOData, DWORD dwNumberOfBytesTransferred)
 	{
 		if (!checkNTStatus(Internal) || !checkNTStatus(perIOData.Internal))
 		{

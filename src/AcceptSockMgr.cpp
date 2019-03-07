@@ -1,13 +1,13 @@
 
-#include "AcceptSockMgr.h"
+#include "../inc/AcceptSockMgr.h"
 
 namespace NS_WinSock
 {
-	void CAcceptSockMgr::init(const CB_Accept& cbAccept, const CB_Recv& cbRecv, const CB_PeerShutdown& cbPeerShutdown)
+	void CAcceptSockMgr::init(const CB_Accept& cbAccept, const CB_Recv& cbRecv, const CB_PeerDisconnect& cbPeerDisconnect)
 	{
 		m_cbAccept = cbAccept;
 		m_cbRecv = cbRecv;
-		m_cbPeerShutdown = cbPeerShutdown;
+		m_cbPeerDisconnect = cbPeerDisconnect;
 
 		m_thrNewAccept = thread([&] {
 			_acceptLoop();
@@ -143,9 +143,9 @@ namespace NS_WinSock
 			{
 				auto pWinSock = *itr;
 
-				if (m_cbPeerShutdown)
+				if (m_cbPeerDisconnect)
 				{
-					m_cbPeerShutdown(*pWinSock);
+					m_cbPeerDisconnect(*pWinSock);
 				}
 
 				if (!pWinSock->disconnect())
