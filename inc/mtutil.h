@@ -109,9 +109,9 @@ namespace NS_mtutil
 		}
 
 	public:
-		bool try_lock(UINT uRetryTimes=1, UINT uSleepTime = 0)
+		bool try_lock(UINT uRetryTimes=1)
 		{
-			return _lock(uRetryTimes, uSleepTime);
+			return _lock(uRetryTimes, 0);
 		}
 
 		void lock(UINT uSleepTime = 0)
