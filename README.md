@@ -3,3 +3,7 @@ Windows IOCP+线程池的高并发Socket通信框架，带压测用例。4核8�
 
 CIOCP类实现完成端口的封装、多线程轮询及事件回调，可用来绑定客户侧socket对象。
 
+ClientSock为客户侧socket封装，提供连接服务端和检查连接状态的方法
+由基类提供异步接收数据的方法，可绑定到windows线程池或iocp对象
+
+ServerSock为服务端socket，提供非阻塞接受连接的方法，内置iocp对象实现实时监听和数据收发，并提供接收、断开的事件回调。
